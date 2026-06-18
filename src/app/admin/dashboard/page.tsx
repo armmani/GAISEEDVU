@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { MapPin, Truck, ExternalLink, RefreshCw, ToggleLeft, ToggleRight, LogOut } from 'lucide-react'
 import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, type Order, type OrderStatus } from '@/lib/types'
+import { createClient } from '@/lib/supabase/client'
 
 const STATUS_COLORS: Record<OrderStatus, { bg: string; text: string }> = {
   pending:   { bg: '#fff3cd', text: '#856404' },
@@ -64,9 +65,11 @@ export default function AdminDashboard() {
     }
   }
 
-  function logout() {
-    document.cookie = 'admin_auth=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'
-    router.push('/admin/login')
+  async function logout() {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/login')
+    router.refresh()
   }
 
   const filtered = filter === 'all' ? orders : orders.filter(o => o.status === filter)
