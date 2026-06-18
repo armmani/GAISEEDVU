@@ -55,10 +55,11 @@ export default function LoginPage() {
             phone: form.phone.trim(),
           }),
         })
+        await supabase.auth.signOut()
       }
-      toast.success('สมัครสมาชิกสำเร็จ!')
-      router.push('/')
-      router.refresh()
+      toast.success('สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ')
+      setForm(prev => ({ ...prev, display_name: '', phone: '' }))
+      setTab('login')
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'สมัครสมาชิกไม่สำเร็จ')
     } finally {
