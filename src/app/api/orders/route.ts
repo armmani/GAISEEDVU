@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createClient as createServerClient } from '@/lib/supabase/server'
 
-const supabase = createClient(
+const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
 export async function POST(req: NextRequest) {
   try {
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
     const body = await req.json()
     const { customer_name, phone, quantity, total_amount, delivery_type, pickup_location, delivery_address, pickup_date, note } = body
 
@@ -15,8 +19,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'ข้อมูลไม่ครบ' }, { status: 400 })
     }
 
-    // Check if accepting orders
-    const { data: settings } = await supabase
+    const { data: settings } = await supabaseAdmin
       .from('settings')
       .select('is_accepting_orders')
       .single()
@@ -25,7 +28,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'ขณะนี้ปิดรับออเดอร์ชั่วคราว' }, { status: 400 })
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('orders')
       .insert({
         customer_name: customer_name.trim(),
@@ -38,12 +41,12 @@ export async function POST(req: NextRequest) {
         pickup_date,
         note: note?.trim() || null,
         status: 'pending',
+        user_id: user?.id ?? null,
       })
       .select('id')
       .single()
 
     if (error) throw error
-
     return NextResponse.json({ id: data.id })
   } catch (err) {
     console.error(err)
