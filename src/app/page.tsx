@@ -68,13 +68,7 @@ export default function OrderPage() {
 
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="text-6xl mb-2">🐔</div>
-          <h1 className="text-4xl font-black tracking-tight" style={{ color: '#4a2728' }}>
-            GAI SEED VU
-          </h1>
-          <p className="text-sm font-bold mt-1 tracking-widest uppercase" style={{ color: '#7a4a4b' }}>
-            Sous Vide Chicken
-          </p>
+          <img src="/logo.png" alt="GAI SEED VU" className="w-64 mx-auto"  />
         </div>
 
         {/* Product Card */}

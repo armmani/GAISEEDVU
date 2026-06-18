@@ -112,8 +112,7 @@ export default function OrderConfirmPage() {
 
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="text-5xl mb-2">🐔</div>
-          <h1 className="text-3xl font-black" style={{ color: '#4a2728' }}>GAI SEED VU</h1>
+          <img src="/logo.png" alt="GAI SEED VU" className="w-52 mx-auto"  />
         </div>
 
         {/* Order Summary */}

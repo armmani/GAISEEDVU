@@ -77,7 +77,7 @@ export default function AdminDashboard() {
       {/* Top Bar */}
       <div className="sticky top-0 z-10 px-4 py-3 flex items-center justify-between" style={{ background: '#4a2728' }}>
         <div className="flex items-center gap-2">
-          <span className="text-xl">🐔</span>
+          <img src="/logo.png" alt="GAI SEED VU" className="w-8 h-8 object-contain rounded" />
           <span className="font-black text-base" style={{ color: '#f2dada' }}>Admin</span>
         </div>
         <div className="flex items-center gap-3">

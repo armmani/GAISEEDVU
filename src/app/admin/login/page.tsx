@@ -31,9 +31,8 @@ export default function AdminLoginPage() {
     <main className="min-h-screen flex items-center justify-center px-4" style={{ background: '#f2dada' }}>
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="text-5xl mb-2">🐔</div>
+          <img src="/logo.png" alt="GAI SEED VU" className="w-40 mx-auto mb-2"  />
           <h1 className="text-2xl font-black" style={{ color: '#4a2728' }}>Admin Login</h1>
-          <p className="text-sm mt-1" style={{ color: '#7a4a4b' }}>GAI SEED VU</p>
         </div>
 
         <form onSubmit={handleLogin} className="rounded-2xl p-6 border-2 space-y-4" style={{ background: 'white', borderColor: '#e8c4c4' }}>
