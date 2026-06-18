@@ -6,6 +6,9 @@ import toast from 'react-hot-toast'
 import { ShoppingBag, MapPin, Truck, Minus, Plus } from 'lucide-react'
 import { PICKUP_LOCATIONS, PRICE_PER_PIECE, type DeliveryType, type PickupLocation } from '@/lib/types'
 import BottomNav from '@/components/BottomNav'
+import dynamic from 'next/dynamic'
+
+const MapPicker = dynamic(() => import('@/components/MapPicker'), { ssr: false })
 
 function getMinDate() {
   const d = new Date()
@@ -19,6 +22,7 @@ export default function OrderPage() {
   const [quantity, setQuantity] = useState(1)
   const [deliveryType, setDeliveryType] = useState<DeliveryType>('pickup')
   const [pickupLocation, setPickupLocation] = useState<PickupLocation>('donmueang')
+  const [mapCoords, setMapCoords] = useState({ lat: 13.7563, lng: 100.5018 })
   const [form, setForm] = useState({
     customer_name: '',
     phone: '',
@@ -176,15 +180,31 @@ export default function OrderPage() {
             )}
 
             {deliveryType === 'grab' && (
-              <div>
-                <label className="block text-sm font-semibold mb-1" style={{ color: '#7a4a4b' }}>
-                  ที่อยู่จัดส่ง * <span className="font-normal">(เฉพาะ กทม.)</span>
-                </label>
-                <textarea value={form.delivery_address} onChange={e => set('delivery_address', e.target.value)}
-                  placeholder="บ้านเลขที่ ถนน แขวง เขต กรุงเทพฯ" rows={3}
-                  className="w-full rounded-xl px-4 py-3 border-2 text-sm font-medium resize-none"
-                  style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
-                <p className="text-xs mt-1" style={{ color: '#7a4a4b' }}>ค่าส่ง Grab เก็บปลายทาง</p>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-semibold mb-2" style={{ color: '#7a4a4b' }}>
+                    ปักหมุดตำแหน่งจัดส่ง * <span className="font-normal">(เฉพาะ กทม.)</span>
+                  </label>
+                  <MapPicker
+                    lat={mapCoords.lat}
+                    lng={mapCoords.lng}
+                    onMove={(lat, lng, address) => {
+                      setMapCoords({ lat, lng })
+                      set('delivery_address', address)
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-1" style={{ color: '#7a4a4b' }}>
+                    ที่อยู่ (แก้ไขได้)
+                  </label>
+                  <textarea value={form.delivery_address} onChange={e => set('delivery_address', e.target.value)}
+                    placeholder="ที่อยู่จะขึ้นอัตโนมัติหลังปักหมุด หรือพิมพ์เองได้เลย"
+                    rows={2}
+                    className="w-full rounded-xl px-4 py-3 border-2 text-sm font-medium resize-none"
+                    style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
+                </div>
+                <p className="text-xs" style={{ color: '#7a4a4b' }}>ค่าส่ง Grab เก็บปลายทาง</p>
               </div>
             )}
           </div>
