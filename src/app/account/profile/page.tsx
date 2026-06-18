@@ -10,8 +10,10 @@ import BottomNav from '@/components/BottomNav'
 export default function ProfilePage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [pwLoading, setPwLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [form, setForm] = useState({ display_name: '', phone: '', default_address: '' })
+  const [pwForm, setPwForm] = useState({ newPassword: '', confirmPassword: '' })
   const supabase = createClient()
 
   useEffect(() => {
@@ -48,6 +50,23 @@ export default function ProfilePage() {
       toast.error(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault()
+    if (pwForm.newPassword.length < 6) return toast.error('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร')
+    if (pwForm.newPassword !== pwForm.confirmPassword) return toast.error('รหัสผ่านไม่ตรงกัน')
+    setPwLoading(true)
+    try {
+      const { error } = await supabase.auth.updateUser({ password: pwForm.newPassword })
+      if (error) throw error
+      toast.success('เปลี่ยนรหัสผ่านสำเร็จ!')
+      setPwForm({ newPassword: '', confirmPassword: '' })
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด')
+    } finally {
+      setPwLoading(false)
     }
   }
 
@@ -107,6 +126,34 @@ export default function ProfilePage() {
             className="w-full rounded-xl py-3 font-bold text-sm disabled:opacity-50"
             style={{ background: '#4a2728', color: '#f2dada' }}>
             {loading ? 'กำลังบันทึก...' : 'บันทึก'}
+          </button>
+        </form>
+
+        {/* Change Password */}
+        <form onSubmit={handleChangePassword} className="rounded-2xl p-5 border-2 space-y-4 mt-4"
+          style={{ background: 'white', borderColor: '#e8c4c4' }}>
+          <h3 className="font-bold text-lg" style={{ color: '#4a2728' }}>เปลี่ยนรหัสผ่าน</h3>
+          <div>
+            <label className="block text-sm font-semibold mb-1" style={{ color: '#7a4a4b' }}>รหัสผ่านใหม่</label>
+            <input type="password" value={pwForm.newPassword}
+              onChange={e => setPwForm(p => ({ ...p, newPassword: e.target.value }))}
+              placeholder="อย่างน้อย 6 ตัวอักษร"
+              className="w-full rounded-xl px-4 py-3 border-2 text-sm font-medium"
+              style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold mb-1" style={{ color: '#7a4a4b' }}>ยืนยันรหัสผ่าน</label>
+            <input type="password" value={pwForm.confirmPassword}
+              onChange={e => setPwForm(p => ({ ...p, confirmPassword: e.target.value }))}
+              placeholder="พิมพ์รหัสผ่านอีกครั้ง"
+              className="w-full rounded-xl px-4 py-3 border-2 text-sm font-medium"
+              style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
+          </div>
+          <button type="submit"
+            disabled={pwLoading || !pwForm.newPassword || !pwForm.confirmPassword}
+            className="w-full rounded-xl py-3 font-bold text-sm disabled:opacity-50"
+            style={{ background: '#4a2728', color: '#f2dada' }}>
+            {pwLoading ? 'กำลังบันทึก...' : 'เปลี่ยนรหัสผ่าน'}
           </button>
         </form>
       </div>

@@ -24,7 +24,7 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
-  const isLoginPage = pathname.startsWith('/login')
+  const isLoginPage = pathname.startsWith('/login') || pathname.startsWith('/reset-password')
   const isAdminPage = pathname.startsWith('/admin')
   const isApiRoute = pathname.startsWith('/api')
   const isStaticAsset = pathname.startsWith('/_next') || pathname === '/favicon.ico' || pathname === '/logo.png'
