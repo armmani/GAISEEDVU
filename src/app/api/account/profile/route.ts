@@ -23,11 +23,11 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const { user_id, display_name, phone, default_address } = body
+  const { user_id, display_name, phone, default_address, telegram_chat_id } = body
 
   const { error } = await supabaseAdmin
     .from('profiles')
-    .upsert({ id: user_id, display_name, phone, default_address, updated_at: new Date().toISOString() })
+    .upsert({ id: user_id, display_name, phone, default_address, telegram_chat_id: telegram_chat_id || null, updated_at: new Date().toISOString() })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
@@ -39,11 +39,11 @@ export async function PATCH(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { display_name, phone, default_address } = body
+  const { display_name, phone, default_address, telegram_chat_id } = body
 
   const { error } = await supabaseAdmin
     .from('profiles')
-    .upsert({ id: user.id, display_name, phone, default_address, updated_at: new Date().toISOString() })
+    .upsert({ id: user.id, display_name, phone, default_address, telegram_chat_id: telegram_chat_id || null, updated_at: new Date().toISOString() })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })

@@ -12,7 +12,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(false)
   const [pwLoading, setPwLoading] = useState(false)
   const [email, setEmail] = useState('')
-  const [form, setForm] = useState({ display_name: '', phone: '', default_address: '' })
+  const [form, setForm] = useState({ display_name: '', phone: '', default_address: '', telegram_chat_id: '' })
   const [pwForm, setPwForm] = useState({ newPassword: '', confirmPassword: '' })
   const supabase = createClient()
 
@@ -27,6 +27,7 @@ export default function ProfilePage() {
           display_name: p.display_name || '',
           phone: p.phone || '',
           default_address: p.default_address || '',
+          telegram_chat_id: p.telegram_chat_id || '',
         })
       })
   }, [])
@@ -120,6 +121,18 @@ export default function ProfilePage() {
               placeholder="บ้านเลขที่ ถนน แขวง เขต กรุงเทพฯ" rows={3}
               className="w-full rounded-xl px-4 py-3 border-2 text-sm font-medium resize-none"
               style={inputStyle} />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold mb-1" style={{ color: '#7a4a4b' }}>
+              Telegram Chat ID (รับแจ้งเตือนสถานะออเดอร์)
+            </label>
+            <input type="text" value={form.telegram_chat_id} onChange={e => set('telegram_chat_id', e.target.value)}
+              placeholder="เช่น 123456789"
+              className={inputClass} style={inputStyle} />
+            <p className="text-xs mt-1" style={{ color: '#7a4a4b' }}>
+              ดู Chat ID ได้โดย message <b>@userinfobot</b> ใน Telegram
+            </p>
           </div>
 
           <button type="submit" disabled={loading}
