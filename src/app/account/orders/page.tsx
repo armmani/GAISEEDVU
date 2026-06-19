@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ChevronRight, MapPin, Truck } from 'lucide-react'
 import { ORDER_STATUS_LABEL, type Order, type OrderStatus } from '@/lib/types'
 import BottomNav from '@/components/BottomNav'
+import ChickenLoader from '@/components/ChickenLoader'
 
 const STATUS_COLORS: Record<OrderStatus, { bg: string; text: string }> = {
   pending:   { bg: '#fff3cd', text: '#856404' },
@@ -31,12 +32,12 @@ export default function OrdersPage() {
         <h1 className="text-2xl font-black mb-5" style={{ color: '#4a2728' }}>ออเดอร์ของฉัน</h1>
 
         {loading && (
-          <div className="text-center py-16 text-2xl">🐔</div>
+          <div className="flex justify-center py-16"><ChickenLoader /></div>
         )}
 
         {!loading && orders.length === 0 && (
           <div className="text-center py-16 rounded-2xl border-2" style={{ background: 'white', borderColor: '#e8c4c4' }}>
-            <div className="text-4xl mb-3">🐔</div>
+            <p className="text-4xl mb-3">🛒</p>
             <p className="font-semibold" style={{ color: '#4a2728' }}>ยังไม่มีออเดอร์</p>
             <Link href="/" className="block mt-3 text-sm font-bold" style={{ color: '#7a4a4b' }}>
               สั่งเลย →

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { ArrowLeft, MapPin, Truck, ExternalLink } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, type Order, type OrderStatus } from '@/lib/types'
+import ChickenLoader from '@/components/ChickenLoader'
 
 const STATUS_STEPS: OrderStatus[] = ['pending', 'confirmed', 'ready', 'completed']
 
@@ -32,7 +33,7 @@ export default function OrderDetailPage() {
 
   if (!order) return (
     <main className="min-h-screen flex items-center justify-center" style={{ background: '#f2dada' }}>
-      <div className="text-4xl animate-bounce">🐔</div>
+      <ChickenLoader />
     </main>
   )
 

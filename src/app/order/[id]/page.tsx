@@ -8,6 +8,7 @@ import { CheckCircle, Upload, Clock, MapPin, Truck } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, type Order } from '@/lib/types'
 import BottomNav from '@/components/BottomNav'
+import ChickenLoader from '@/components/ChickenLoader'
 
 const PROMPTPAY_ID = process.env.NEXT_PUBLIC_PROMPTPAY_ID ?? ''
 
@@ -99,7 +100,7 @@ export default function OrderConfirmPage() {
   if (!order) {
     return (
       <main className="min-h-screen flex items-center justify-center" style={{ background: '#f2dada' }}>
-        <div className="text-4xl animate-bounce">🐔</div>
+        <ChickenLoader />
       </main>
     )
   }
