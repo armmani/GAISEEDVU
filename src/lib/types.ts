@@ -19,6 +19,7 @@ export interface Order {
   salt_level: SaltLevel | null
   no_pepper: boolean
   sesame_oil: boolean
+  user_id: string | null
   created_at: string
 }
 

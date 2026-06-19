@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { MapPin, Truck, ExternalLink, RefreshCw, ToggleLeft, ToggleRight, LogOut, Users, ClipboardList } from 'lucide-react'
-import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, SALT_LEVEL_LABEL, type Order, type OrderStatus } from '@/lib/types'
+import { MapPin, Truck, ExternalLink, RefreshCw, ToggleLeft, ToggleRight, LogOut, Users, ClipboardList, Tag, X } from 'lucide-react'
+import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, SALT_LEVEL_LABEL, PRICE_PER_PIECE, type Order, type OrderStatus } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 
 const STATUS_COLORS: Record<OrderStatus, { bg: string; text: string }> = {
@@ -20,10 +20,19 @@ const STATUS_FLOW: OrderStatus[] = ['pending', 'confirmed', 'ready', 'completed'
 interface CustomerSummary {
   name: string
   phone: string
+  userId: string | null
   orders: Order[]
   totalOrders: number
   totalPieces: number
   totalSpent: number
+}
+
+interface CustomerPricing {
+  id: string
+  user_id: string
+  price_per_piece: number
+  expires_at: string | null
+  note: string | null
 }
 
 function groupByCustomer(orders: Order[]): CustomerSummary[] {
@@ -31,9 +40,10 @@ function groupByCustomer(orders: Order[]): CustomerSummary[] {
   for (const o of orders) {
     const key = `${o.customer_name}__${o.phone}`
     if (!map.has(key)) {
-      map.set(key, { name: o.customer_name, phone: o.phone, orders: [], totalOrders: 0, totalPieces: 0, totalSpent: 0 })
+      map.set(key, { name: o.customer_name, phone: o.phone, userId: o.user_id ?? null, orders: [], totalOrders: 0, totalPieces: 0, totalSpent: 0 })
     }
     const c = map.get(key)!
+    if (!c.userId && o.user_id) c.userId = o.user_id
     c.orders.push(o)
     c.totalOrders++
     c.totalPieces += o.quantity
@@ -51,18 +61,58 @@ export default function AdminDashboard() {
   const [filter, setFilter] = useState<OrderStatus | 'all'>('all')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [expandedCustomer, setExpandedCustomer] = useState<string | null>(null)
+  const [pricingMap, setPricingMap] = useState<Record<string, CustomerPricing>>({})
+  const [pricingForm, setPricingForm] = useState<{ userId: string; price: string; expires_at: string; note: string } | null>(null)
+  const [pricingLoading, setPricingLoading] = useState(false)
 
   async function fetchData() {
     setLoading(true)
-    const [ordersRes, settingsRes] = await Promise.all([
+    const [ordersRes, settingsRes, pricingRes] = await Promise.all([
       fetch('/api/admin/orders'),
       fetch('/api/admin/settings'),
+      fetch('/api/admin/customer-pricing'),
     ])
     if (ordersRes.status === 401) { router.push('/admin/login'); return }
-    const [ordersData, settingsData] = await Promise.all([ordersRes.json(), settingsRes.json()])
+    const [ordersData, settingsData, pricingData] = await Promise.all([
+      ordersRes.json(), settingsRes.json(), pricingRes.json(),
+    ])
     setOrders(ordersData)
     setAccepting(settingsData.is_accepting_orders ?? true)
+    const pm: Record<string, CustomerPricing> = {}
+    if (Array.isArray(pricingData)) pricingData.forEach((p: CustomerPricing) => { pm[p.user_id] = p })
+    setPricingMap(pm)
     setLoading(false)
+  }
+
+  async function savePricing() {
+    if (!pricingForm) return
+    setPricingLoading(true)
+    const res = await fetch('/api/admin/customer-pricing', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: pricingForm.userId,
+        price_per_piece: parseInt(pricingForm.price),
+        expires_at: pricingForm.expires_at || null,
+        note: pricingForm.note || null,
+      }),
+    })
+    if (res.ok) {
+      toast.success('บันทึกราคาพิเศษแล้ว')
+      setPricingForm(null)
+      fetchData()
+    }
+    setPricingLoading(false)
+  }
+
+  async function removePricing(userId: string) {
+    await fetch('/api/admin/customer-pricing', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId }),
+    })
+    toast.success('ลบราคาพิเศษแล้ว')
+    fetchData()
   }
 
   useEffect(() => { fetchData() }, [])
@@ -301,12 +351,25 @@ export default function AdminDashboard() {
             {customers.map(c => {
               const key = `${c.name}__${c.phone}`
               const expanded = expandedCustomer === key
+              const pricing = c.userId ? pricingMap[c.userId] : null
+              const isShowingForm = pricingForm?.userId === c.userId
+              const pricingExpired = pricing?.expires_at ? new Date(pricing.expires_at) < new Date() : false
+              const pricingActive = pricing && !pricingExpired
+
               return (
-                <div key={key} className="rounded-2xl border-2 overflow-hidden" style={{ background: 'white', borderColor: '#e8c4c4' }}>
+                <div key={key} className="rounded-2xl border-2 overflow-hidden" style={{ background: 'white', borderColor: pricingActive ? '#b8860b' : '#e8c4c4' }}>
                   <button className="w-full px-4 py-3 flex items-center justify-between gap-2 text-left"
                     onClick={() => setExpandedCustomer(expanded ? null : key)}>
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-sm truncate" style={{ color: '#4a2728' }}>{c.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-sm truncate" style={{ color: '#4a2728' }}>{c.name}</p>
+                        {pricingActive && (
+                          <span className="text-xs font-bold px-1.5 py-0.5 rounded-full shrink-0"
+                            style={{ background: '#fff3cd', color: '#b8860b' }}>
+                            ราคาพิเศษ {pricing!.price_per_piece}฿
+                          </span>
+                        )}
+                      </div>
                       <a href={`tel:${c.phone}`} className="text-xs underline" style={{ color: '#7a4a4b' }}
                         onClick={e => e.stopPropagation()}>
                         {c.phone}
@@ -320,6 +383,82 @@ export default function AdminDashboard() {
 
                   {expanded && (
                     <div className="border-t" style={{ borderColor: '#e8c4c4' }}>
+                      {/* Special Pricing Section */}
+                      {c.userId && (
+                        <div className="px-4 py-3 border-b" style={{ borderColor: '#e8c4c4', background: '#fffdf5' }}>
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-xs font-bold flex items-center gap-1" style={{ color: '#4a2728' }}>
+                              <Tag size={12} /> ราคาพิเศษ
+                            </p>
+                            <div className="flex gap-2">
+                              {pricingActive && (
+                                <button onClick={() => removePricing(c.userId!)}
+                                  className="text-xs font-semibold flex items-center gap-0.5"
+                                  style={{ color: '#c0392b' }}>
+                                  <X size={12} /> ลบ
+                                </button>
+                              )}
+                              <button
+                                onClick={() => setPricingForm(isShowingForm ? null : {
+                                  userId: c.userId!,
+                                  price: pricing?.price_per_piece?.toString() ?? '',
+                                  expires_at: pricing?.expires_at ? pricing.expires_at.slice(0, 10) : '',
+                                  note: pricing?.note ?? '',
+                                })}
+                                className="text-xs font-semibold"
+                                style={{ color: '#1a5eb8' }}>
+                                {isShowingForm ? 'ยกเลิก' : pricingActive ? 'แก้ไข' : '+ ตั้งราคา'}
+                              </button>
+                            </div>
+                          </div>
+
+                          {pricingActive && !isShowingForm && (
+                            <div className="text-xs space-y-0.5" style={{ color: '#7a4a4b' }}>
+                              <p>ราคา <b style={{ color: '#4a2728' }}>{pricing!.price_per_piece} บาท/ชิ้น</b>
+                                {' '}(ปกติ {PRICE_PER_PIECE} บาท)</p>
+                              {pricing!.expires_at && (
+                                <p>หมดอายุ {new Date(pricing!.expires_at).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
+                              )}
+                              {!pricing!.expires_at && <p>ถาวร</p>}
+                              {pricing!.note && <p>หมายเหตุ: {pricing!.note}</p>}
+                            </div>
+                          )}
+
+                          {isShowingForm && (
+                            <div className="space-y-2 mt-1">
+                              <div className="flex gap-2">
+                                <div className="flex-1">
+                                  <p className="text-xs mb-1" style={{ color: '#7a4a4b' }}>ราคา (บาท/ชิ้น)</p>
+                                  <input type="number" value={pricingForm!.price}
+                                    onChange={e => setPricingForm(p => p ? { ...p, price: e.target.value } : null)}
+                                    placeholder={String(PRICE_PER_PIECE)}
+                                    className="w-full rounded-lg px-3 py-2 border-2 text-sm font-bold"
+                                    style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
+                                </div>
+                                <div className="flex-1">
+                                  <p className="text-xs mb-1" style={{ color: '#7a4a4b' }}>หมดอายุ (ว่าง = ถาวร)</p>
+                                  <input type="date" value={pricingForm!.expires_at}
+                                    onChange={e => setPricingForm(p => p ? { ...p, expires_at: e.target.value } : null)}
+                                    className="w-full rounded-lg px-3 py-2 border-2 text-sm"
+                                    style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
+                                </div>
+                              </div>
+                              <input type="text" value={pricingForm!.note}
+                                onChange={e => setPricingForm(p => p ? { ...p, note: e.target.value } : null)}
+                                placeholder="หมายเหตุ (ไม่บังคับ)"
+                                className="w-full rounded-lg px-3 py-2 border-2 text-sm"
+                                style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
+                              <button onClick={savePricing} disabled={pricingLoading || !pricingForm!.price}
+                                className="w-full rounded-lg py-2 text-xs font-bold disabled:opacity-50"
+                                style={{ background: '#4a2728', color: '#f2dada' }}>
+                                {pricingLoading ? 'กำลังบันทึก...' : 'บันทึกราคาพิเศษ'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Order history */}
                       {c.orders.map((order, i) => {
                         const colors = STATUS_COLORS[order.status]
                         const seasoning = [

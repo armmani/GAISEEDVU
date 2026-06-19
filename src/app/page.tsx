@@ -20,6 +20,7 @@ export default function OrderPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [quantity, setQuantity] = useState(1)
+  const [pricePerPiece, setPricePerPiece] = useState(PRICE_PER_PIECE)
   const [deliveryType, setDeliveryType] = useState<DeliveryType>('pickup')
   const [pickupLocation, setPickupLocation] = useState<PickupLocation>('donmueang')
   const [saltLevel, setSaltLevel] = useState<SaltLevel>('normal')
@@ -34,9 +35,13 @@ export default function OrderPage() {
     note: '',
   })
 
-  const total = quantity * PRICE_PER_PIECE
+  const total = quantity * pricePerPiece
 
   useEffect(() => {
+    fetch('/api/account/pricing')
+      .then(r => r.json())
+      .then(d => { if (d.price_per_piece) setPricePerPiece(d.price_per_piece) })
+      .catch(() => {})
     fetch('/api/account/profile')
       .then(r => r.json())
       .then(profile => {
@@ -121,7 +126,15 @@ export default function OrderPage() {
             <div>
               <h2 className="text-xl font-bold" style={{ color: '#4a2728' }}>Original เกลือพริกไท</h2>
               <p className="text-sm mt-1" style={{ color: '#7a4a4b' }}>ไก่ซูวีด 200–300 กรัม/ชิ้น</p>
-              <p className="text-2xl font-black mt-2" style={{ color: '#4a2728' }}>ชิ้นละ {PRICE_PER_PIECE} บาท</p>
+              {pricePerPiece !== PRICE_PER_PIECE ? (
+                <div className="mt-2 flex items-center gap-2">
+                  <p className="text-sm line-through" style={{ color: '#b09090' }}>ชิ้นละ {PRICE_PER_PIECE} บาท</p>
+                  <p className="text-2xl font-black" style={{ color: '#c0392b' }}>ชิ้นละ {pricePerPiece} บาท</p>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: '#ffd6d6', color: '#c0392b' }}>ราคาพิเศษ</span>
+                </div>
+              ) : (
+                <p className="text-2xl font-black mt-2" style={{ color: '#4a2728' }}>ชิ้นละ {PRICE_PER_PIECE} บาท</p>
+              )}
             </div>
             <div className="rounded-xl px-3 py-1 text-xs font-bold shrink-0" style={{ background: '#f2dada', color: '#4a2728' }}>
               Pre-order

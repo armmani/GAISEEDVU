@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { sendTelegram } from '@/lib/telegram'
-import { SALT_LEVEL_LABEL, type SaltLevel } from '@/lib/types'
+import { SALT_LEVEL_LABEL, PRICE_PER_PIECE, type SaltLevel } from '@/lib/types'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,13 +30,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'ขณะนี้ปิดรับออเดอร์ชั่วคราว' }, { status: 400 })
     }
 
+    // Get user's special price (server-side, cannot be tampered)
+    let pricePerPiece = PRICE_PER_PIECE
+    if (user) {
+      const now = new Date().toISOString()
+      const { data: pricing } = await supabaseAdmin
+        .from('customer_pricing')
+        .select('price_per_piece')
+        .eq('user_id', user.id)
+        .or(`expires_at.is.null,expires_at.gt.${now}`)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (pricing) pricePerPiece = pricing.price_per_piece
+    }
+    const calculatedTotal = quantity * pricePerPiece
+
     const { data, error } = await supabaseAdmin
       .from('orders')
       .insert({
         customer_name: customer_name.trim(),
         phone: phone.trim(),
         quantity,
-        total_amount,
+        total_amount: calculatedTotal,
         delivery_type,
         pickup_location: pickup_location || null,
         delivery_address: delivery_address?.trim() || null,
