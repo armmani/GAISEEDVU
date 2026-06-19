@@ -31,6 +31,13 @@ export async function middleware(request: NextRequest) {
 
   if (isApiRoute || isStaticAsset) return supabaseResponse
 
+  // Admin user on non-admin pages → redirect to dashboard
+  if (user?.email === process.env.ADMIN_EMAIL && !isAdminPage && !isLoginPage) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/admin/dashboard'
+    return NextResponse.redirect(url)
+  }
+
   // Admin routes — ต้อง login + เป็น admin email
   if (isAdminPage) {
     if (!user || user.email !== process.env.ADMIN_EMAIL) {
