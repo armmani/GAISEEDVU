@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
         `🧂 ${extras}`,
         note ? `📝 ${note.trim()}` : null,
       ].filter(Boolean).join('\n')
-      sendTelegram(adminChatId, msg)
+      await sendTelegram(adminChatId, msg)
     }
 
     return NextResponse.json({ id: data.id })

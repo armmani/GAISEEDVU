@@ -60,7 +60,7 @@ export async function PATCH(req: NextRequest) {
         status === 'ready' ? '🐔 ไก่พร้อมแล้ว! นัดรับได้เลยนะคะ' : null,
         status === 'confirmed' ? '👩‍🍳 ยืนยันออเดอร์แล้ว กำลังเตรียมไก่ให้เลยค่ะ' : null,
       ].filter(Boolean).join('\n')
-      sendTelegram(profile.telegram_chat_id, msg)
+      await sendTelegram(profile.telegram_chat_id, msg)
     }
   }
 
