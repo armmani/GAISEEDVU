@@ -235,19 +235,23 @@ export default function AdminDashboard() {
         {tab === 'orders' && <>
           {/* Stats */}
           <div className="grid grid-cols-4 gap-2">
-            {(['pending', 'confirmed', 'ready', 'completed'] as OrderStatus[]).map(s => (
-              <div key={s}
-                className="rounded-xl p-2 text-center border-2 cursor-pointer transition-all"
-                style={{
-                  background: filter === s ? '#4a2728' : 'white',
-                  borderColor: filter === s ? '#4a2728' : '#e8c4c4',
-                  color: filter === s ? '#f2dada' : '#4a2728',
-                }}
-                onClick={() => setFilter(filter === s ? 'all' : s)}>
-                <div className="text-xl font-black">{counts[s] ?? 0}</div>
-                <div className="text-xs font-semibold">{ORDER_STATUS_LABEL[s]}</div>
-              </div>
-            ))}
+            {(['pending', 'confirmed', 'ready', 'completed'] as OrderStatus[]).map(s => {
+              const c = STATUS_COLORS[s]
+              const active = filter === s
+              return (
+                <div key={s}
+                  className="rounded-xl p-2 text-center border-2 cursor-pointer transition-all"
+                  style={{
+                    background: active ? c.bg : 'white',
+                    borderColor: active ? c.text : '#e8c4c4',
+                    color: active ? c.text : '#4a2728',
+                  }}
+                  onClick={() => setFilter(active ? 'all' : s)}>
+                  <div className="text-xl font-black">{counts[s] ?? 0}</div>
+                  <div className="text-xs font-semibold">{ORDER_STATUS_LABEL[s]}</div>
+                </div>
+              )
+            })}
           </div>
 
           {/* Orders list */}
