@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
 
     const body = await req.json()
-    const { customer_name, phone, quantity, total_amount, delivery_type, pickup_location, delivery_address, pickup_date, note } = body
+    const { customer_name, phone, quantity, total_amount, delivery_type, pickup_location, delivery_address, pickup_date, note, salt_level, no_pepper, sesame_oil } = body
 
     if (!customer_name || !phone || !quantity || !pickup_date || !delivery_type) {
       return NextResponse.json({ error: 'ข้อมูลไม่ครบ' }, { status: 400 })
@@ -40,6 +40,9 @@ export async function POST(req: NextRequest) {
         delivery_address: delivery_address?.trim() || null,
         pickup_date,
         note: note?.trim() || null,
+        salt_level: salt_level || 'normal',
+        no_pepper: !!no_pepper,
+        sesame_oil: !!sesame_oil,
         status: 'pending',
         user_id: user?.id ?? null,
       })

@@ -1,6 +1,7 @@
 export type DeliveryType = 'pickup' | 'grab'
 export type PickupLocation = 'donmueang' | 'siam' | 'chula'
 export type OrderStatus = 'pending' | 'confirmed' | 'ready' | 'completed' | 'cancelled'
+export type SaltLevel = 'less' | 'normal' | 'more'
 
 export interface Order {
   id: string
@@ -15,7 +16,16 @@ export interface Order {
   status: OrderStatus
   payment_slip_url: string | null
   note: string | null
+  salt_level: SaltLevel | null
+  no_pepper: boolean
+  sesame_oil: boolean
   created_at: string
+}
+
+export const SALT_LEVEL_LABEL: Record<SaltLevel, string> = {
+  less: 'เค็มน้อย',
+  normal: 'เค็มปกติ',
+  more: 'เค็มมาก',
 }
 
 export const PICKUP_LOCATIONS: Record<PickupLocation, string> = {

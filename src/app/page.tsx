@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { ShoppingBag, MapPin, Truck, Minus, Plus } from 'lucide-react'
-import { PICKUP_LOCATIONS, PRICE_PER_PIECE, type DeliveryType, type PickupLocation } from '@/lib/types'
+import { PICKUP_LOCATIONS, SALT_LEVEL_LABEL, PRICE_PER_PIECE, type DeliveryType, type PickupLocation, type SaltLevel } from '@/lib/types'
 import BottomNav from '@/components/BottomNav'
 import dynamic from 'next/dynamic'
 
@@ -22,6 +22,9 @@ export default function OrderPage() {
   const [quantity, setQuantity] = useState(1)
   const [deliveryType, setDeliveryType] = useState<DeliveryType>('pickup')
   const [pickupLocation, setPickupLocation] = useState<PickupLocation>('donmueang')
+  const [saltLevel, setSaltLevel] = useState<SaltLevel>('normal')
+  const [noPepper, setNoPepper] = useState(false)
+  const [sesameOil, setSesameOil] = useState(false)
   const [mapCoords, setMapCoords] = useState({ lat: 13.7563, lng: 100.5018 })
   const [form, setForm] = useState({
     customer_name: '',
@@ -71,6 +74,9 @@ export default function OrderPage() {
           total_amount: total,
           delivery_type: deliveryType,
           pickup_location: deliveryType === 'pickup' ? pickupLocation : null,
+          salt_level: saltLevel,
+          no_pepper: noPepper,
+          sesame_oil: sesameOil,
         }),
       })
       const data = await res.json()
@@ -216,6 +222,48 @@ export default function OrderPage() {
               className="w-full rounded-xl px-4 py-3 border-2 text-sm font-medium"
               style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
             <p className="text-xs mt-2" style={{ color: '#7a4a4b' }}>สั่งล่วงหน้าอย่างน้อย 2 วัน</p>
+          </div>
+
+          <div className="rounded-2xl p-5 border-2 space-y-4" style={{ background: 'white', borderColor: '#e8c4c4' }}>
+            <h3 className="font-bold text-lg" style={{ color: '#4a2728' }}>ปรุงตามใจ</h3>
+            <div>
+              <p className="text-sm font-semibold mb-2" style={{ color: '#7a4a4b' }}>ความเค็ม</p>
+              <div className="grid grid-cols-3 gap-2">
+                {(Object.entries(SALT_LEVEL_LABEL) as [SaltLevel, string][]).map(([key, label]) => (
+                  <button key={key} type="button" onClick={() => setSaltLevel(key)}
+                    className="rounded-xl py-2.5 text-sm font-bold border-2 transition-all"
+                    style={{
+                      borderColor: saltLevel === key ? '#4a2728' : '#e8c4c4',
+                      background: saltLevel === key ? '#4a2728' : 'white',
+                      color: saltLevel === key ? '#f2dada' : '#4a2728',
+                    }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-3">
+              <p className="text-sm font-semibold" style={{ color: '#7a4a4b' }}>ตัวเลือกเพิ่มเติม</p>
+              {[
+                { value: noPepper, set: setNoPepper, label: 'ไม่ใส่พริกไท' },
+                { value: sesameOil, set: setSesameOil, label: 'ใส่น้ำมันงา' },
+              ].map(({ value, set: setter, label }) => (
+                <button key={label} type="button" onClick={() => setter(!value)}
+                  className="w-full flex items-center gap-3 rounded-xl px-4 py-3 border-2 text-left transition-all"
+                  style={{
+                    borderColor: value ? '#4a2728' : '#e8c4c4',
+                    background: value ? '#f2dada' : 'white',
+                  }}>
+                  <div className="w-5 h-5 rounded border-2 flex items-center justify-center shrink-0"
+                    style={{ borderColor: '#4a2728', background: value ? '#4a2728' : 'white' }}>
+                    {value && <svg viewBox="0 0 12 12" className="w-3 h-3" fill="none">
+                      <path d="M2 6l3 3 5-5" stroke="#f2dada" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>}
+                  </div>
+                  <span className="text-sm font-semibold" style={{ color: '#4a2728' }}>{label}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="rounded-2xl p-5 border-2" style={{ background: 'white', borderColor: '#e8c4c4' }}>
