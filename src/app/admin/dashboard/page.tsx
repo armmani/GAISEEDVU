@@ -17,6 +17,13 @@ const STATUS_COLORS: Record<OrderStatus, { bg: string; text: string }> = {
 
 const STATUS_FLOW: OrderStatus[] = ['pending', 'confirmed', 'ready', 'completed']
 
+interface Profile {
+  id: string
+  display_name: string
+  phone: string
+  created_at: string
+}
+
 interface CustomerSummary {
   name: string
   phone: string
@@ -25,6 +32,7 @@ interface CustomerSummary {
   totalOrders: number
   totalPieces: number
   totalSpent: number
+  joinedAt: string | null
 }
 
 interface CustomerPricing {
@@ -35,26 +43,44 @@ interface CustomerPricing {
   note: string | null
 }
 
-function groupByCustomer(orders: Order[]): CustomerSummary[] {
+function buildCustomers(orders: Order[], profiles: Profile[]): CustomerSummary[] {
   const map = new Map<string, CustomerSummary>()
+
+  // Seed from profiles first
+  for (const p of profiles) {
+    map.set(p.id, {
+      name: p.display_name || '(ยังไม่ได้ตั้งชื่อ)',
+      phone: p.phone || '—',
+      userId: p.id,
+      orders: [],
+      totalOrders: 0,
+      totalPieces: 0,
+      totalSpent: 0,
+      joinedAt: p.created_at,
+    })
+  }
+
+  // Merge orders in
   for (const o of orders) {
-    const key = `${o.customer_name}__${o.phone}`
+    const key = o.user_id ?? `guest__${o.customer_name}__${o.phone}`
     if (!map.has(key)) {
-      map.set(key, { name: o.customer_name, phone: o.phone, userId: o.user_id ?? null, orders: [], totalOrders: 0, totalPieces: 0, totalSpent: 0 })
+      map.set(key, { name: o.customer_name, phone: o.phone, userId: o.user_id ?? null, orders: [], totalOrders: 0, totalPieces: 0, totalSpent: 0, joinedAt: null })
     }
     const c = map.get(key)!
-    if (!c.userId && o.user_id) c.userId = o.user_id
+    if (o.user_id && c.name === '(ยังไม่ได้ตั้งชื่อ)' && o.customer_name) c.name = o.customer_name
     c.orders.push(o)
     c.totalOrders++
     c.totalPieces += o.quantity
     if (o.status !== 'cancelled') c.totalSpent += o.total_amount
   }
+
   return Array.from(map.values()).sort((a, b) => b.totalOrders - a.totalOrders)
 }
 
 export default function AdminDashboard() {
   const router = useRouter()
   const [orders, setOrders] = useState<Order[]>([])
+  const [profiles, setProfiles] = useState<Profile[]>([])
   const [accepting, setAccepting] = useState(true)
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'orders' | 'customers'>('orders')
@@ -67,16 +93,18 @@ export default function AdminDashboard() {
 
   async function fetchData() {
     setLoading(true)
-    const [ordersRes, settingsRes, pricingRes] = await Promise.all([
+    const [ordersRes, settingsRes, pricingRes, profilesRes] = await Promise.all([
       fetch('/api/admin/orders'),
       fetch('/api/admin/settings'),
       fetch('/api/admin/customer-pricing'),
+      fetch('/api/admin/profiles'),
     ])
     if (ordersRes.status === 401) { router.push('/admin/login'); return }
-    const [ordersData, settingsData, pricingData] = await Promise.all([
-      ordersRes.json(), settingsRes.json(), pricingRes.json(),
+    const [ordersData, settingsData, pricingData, profilesData] = await Promise.all([
+      ordersRes.json(), settingsRes.json(), pricingRes.json(), profilesRes.json(),
     ])
     setOrders(ordersData)
+    setProfiles(Array.isArray(profilesData) ? profilesData : [])
     setAccepting(settingsData.is_accepting_orders ?? true)
     const pm: Record<string, CustomerPricing> = {}
     if (Array.isArray(pricingData)) pricingData.forEach((p: CustomerPricing) => { pm[p.user_id] = p })
@@ -151,7 +179,7 @@ export default function AdminDashboard() {
 
   const filtered = filter === 'all' ? orders : orders.filter(o => o.status === filter)
   const counts = orders.reduce((acc, o) => ({ ...acc, [o.status]: (acc[o.status] ?? 0) + 1 }), {} as Record<string, number>)
-  const customers = groupByCustomer(orders)
+  const customers = buildCustomers(orders, profiles)
 
   function OrderDetail({ order }: { order: Order }) {
     const nextStatus = STATUS_FLOW[STATUS_FLOW.indexOf(order.status) + 1]
@@ -370,10 +398,17 @@ export default function AdminDashboard() {
                           </span>
                         )}
                       </div>
-                      <a href={`tel:${c.phone}`} className="text-xs underline" style={{ color: '#7a4a4b' }}
-                        onClick={e => e.stopPropagation()}>
-                        {c.phone}
-                      </a>
+                      <div className="flex items-center gap-2">
+                        <a href={`tel:${c.phone}`} className="text-xs underline" style={{ color: '#7a4a4b' }}
+                          onClick={e => e.stopPropagation()}>
+                          {c.phone}
+                        </a>
+                        {c.joinedAt && (
+                          <span className="text-xs" style={{ color: '#b09090' }}>
+                            สมัคร {new Date(c.joinedAt).toLocaleDateString('th-TH', { month: 'short', day: 'numeric', year: '2-digit' })}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="text-right shrink-0 space-y-0.5">
                       <p className="text-sm font-black" style={{ color: '#4a2728' }}>{c.totalOrders} รอบ · {c.totalPieces} ชิ้น</p>
