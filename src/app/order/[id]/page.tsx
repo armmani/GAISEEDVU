@@ -7,6 +7,7 @@ import QRCode from 'qrcode'
 import { CheckCircle, Upload, Clock, MapPin, Truck } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, type Order } from '@/lib/types'
+import BottomNav from '@/components/BottomNav'
 
 const PROMPTPAY_ID = process.env.NEXT_PUBLIC_PROMPTPAY_ID ?? ''
 
@@ -107,7 +108,7 @@ export default function OrderConfirmPage() {
   const statusLabel = ORDER_STATUS_LABEL[order.status]
 
   return (
-    <main className="min-h-screen py-8 px-4" style={{ background: '#f2dada' }}>
+    <main className="min-h-screen py-8 pb-28 px-4" style={{ background: '#f2dada' }}>
       <div className="max-w-md mx-auto space-y-4">
 
         {/* Header */}
@@ -236,15 +237,8 @@ export default function OrderConfirmPage() {
           </div>
         )}
 
-        {/* Back */}
-        <a
-          href="/"
-          className="block text-center text-sm font-semibold pb-8"
-          style={{ color: '#7a4a4b' }}
-        >
-          ← สั่งเพิ่ม
-        </a>
       </div>
+      <BottomNav />
     </main>
   )
 }
