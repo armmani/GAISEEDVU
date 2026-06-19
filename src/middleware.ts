@@ -49,7 +49,7 @@ export async function middleware(request: NextRequest) {
 
   if (user && isLoginPage) {
     const url = request.nextUrl.clone()
-    url.pathname = '/'
+    url.pathname = user.email === process.env.ADMIN_EMAIL ? '/admin/dashboard' : '/'
     return NextResponse.redirect(url)
   }
 
