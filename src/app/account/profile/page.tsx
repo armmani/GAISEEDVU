@@ -125,14 +125,21 @@ export default function ProfilePage() {
 
           <div>
             <label className="block text-sm font-semibold mb-1" style={{ color: '#7a4a4b' }}>
-              Telegram Chat ID (รับแจ้งเตือนสถานะออเดอร์)
+              Telegram Chat ID <span className="font-normal">(รับแจ้งเตือนสถานะออเดอร์)</span>
             </label>
             <input type="text" value={form.telegram_chat_id} onChange={e => set('telegram_chat_id', e.target.value)}
               placeholder="เช่น 123456789"
               className={inputClass} style={inputStyle} />
-            <p className="text-xs mt-1" style={{ color: '#7a4a4b' }}>
-              ดู Chat ID ได้โดย message <b>@userinfobot</b> ใน Telegram
-            </p>
+
+            <div className="mt-2 rounded-xl p-3 text-xs space-y-1.5" style={{ background: '#fff8f0', border: '1px solid #e8c4c4' }}>
+              <p className="font-bold" style={{ color: '#4a2728' }}>วิธีหา Chat ID (ใช้แค่ครั้งเดียว)</p>
+              <p style={{ color: '#7a4a4b' }}>1. เปิดแอป Telegram บนมือถือ</p>
+              <p style={{ color: '#7a4a4b' }}>2. กดค้นหา แล้วพิมพ์ <span className="font-bold text-black">@userinfobot</span></p>
+              <p style={{ color: '#7a4a4b' }}>3. กดเข้าไปในแชท แล้วกด <span className="font-bold text-black">START</span> หรือ <span className="font-bold text-black">เริ่ม</span></p>
+              <p style={{ color: '#7a4a4b' }}>4. Bot จะตอบข้อมูลของคุณมาเลย มีบรรทัด <span className="font-bold text-black">Id: ตัวเลข</span></p>
+              <p style={{ color: '#7a4a4b' }}>5. เอาตัวเลขนั้นมากรอกในช่องด้านบน แล้วกดบันทึก</p>
+              <p className="pt-0.5" style={{ color: '#4a2728' }}>⚡ หลังบันทึกแล้วจะได้รับแจ้งเตือนใน Telegram ทุกครั้งที่สถานะออเดอร์เปลี่ยน</p>
+            </div>
           </div>
 
           <button type="submit" disabled={loading}
