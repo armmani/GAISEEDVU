@@ -8,11 +8,11 @@ import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, SALT_LEVEL_LABEL, type Order, typ
 import { createClient } from '@/lib/supabase/client'
 
 const STATUS_COLORS: Record<OrderStatus, { bg: string; text: string }> = {
-  pending:   { bg: '#fff3cd', text: '#856404' },
-  confirmed: { bg: '#d1ecf1', text: '#0c5460' },
-  ready:     { bg: '#d4edda', text: '#155724' },
-  completed: { bg: '#e2e3e5', text: '#383d41' },
-  cancelled: { bg: '#f8d7da', text: '#721c24' },
+  pending:   { bg: '#ffd6d6', text: '#c0392b' },
+  confirmed: { bg: '#d6e8ff', text: '#1a5eb8' },
+  ready:     { bg: '#fff3cd', text: '#b8860b' },
+  completed: { bg: '#d4edda', text: '#1a7a3c' },
+  cancelled: { bg: '#e2e3e5', text: '#555' },
 }
 
 const STATUS_FLOW: OrderStatus[] = ['pending', 'confirmed', 'ready', 'completed']
