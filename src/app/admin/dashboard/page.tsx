@@ -181,83 +181,6 @@ export default function AdminDashboard() {
   const counts = orders.reduce((acc, o) => ({ ...acc, [o.status]: (acc[o.status] ?? 0) + 1 }), {} as Record<string, number>)
   const customers = buildCustomers(orders, profiles)
 
-  function OrderDetail({ order }: { order: Order }) {
-    const nextStatus = STATUS_FLOW[STATUS_FLOW.indexOf(order.status) + 1]
-    const seasoning = [
-      order.salt_level ? SALT_LEVEL_LABEL[order.salt_level] : 'เค็มปกติ',
-      order.no_pepper ? 'ไม่ใส่พริกไท' : null,
-      order.sesame_oil ? 'ใส่น้ำมันงา' : null,
-    ].filter(Boolean).join(' · ')
-
-    return (
-      <div className="px-4 pb-4 border-t space-y-3 text-sm" style={{ borderColor: '#e8c4c4' }}>
-        <div className="pt-3 space-y-1.5" style={{ color: '#4a2728' }}>
-          <div className="flex justify-between">
-            <span style={{ color: '#7a4a4b' }}>เบอร์</span>
-            <a href={`tel:${order.phone}`} className="font-bold underline">{order.phone}</a>
-          </div>
-          <div className="flex justify-between">
-            <span style={{ color: '#7a4a4b' }}>วันรับ</span>
-            <span className="font-bold">{new Date(order.pickup_date).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
-          </div>
-          <div className="flex justify-between">
-            <span style={{ color: '#7a4a4b' }}>ยอด</span>
-            <span className="font-bold">{order.total_amount.toLocaleString()} บาท</span>
-          </div>
-          <div className="flex justify-between">
-            <span style={{ color: '#7a4a4b' }}>ปรุง</span>
-            <span className="font-bold text-right ml-4">{seasoning}</span>
-          </div>
-          {order.delivery_type === 'pickup' && order.pickup_location && (
-            <div className="flex justify-between">
-              <span style={{ color: '#7a4a4b' }}>จุดรับ</span>
-              <span className="font-bold text-right ml-4">{PICKUP_LOCATIONS[order.pickup_location]}</span>
-            </div>
-          )}
-          {order.delivery_type === 'grab' && order.delivery_address && (
-            <div>
-              <span style={{ color: '#7a4a4b' }}>ที่อยู่</span>
-              <p className="font-bold mt-0.5">{order.delivery_address}</p>
-            </div>
-          )}
-          {order.note && (
-            <div>
-              <span style={{ color: '#7a4a4b' }}>หมายเหตุ</span>
-              <p className="font-bold">{order.note}</p>
-            </div>
-          )}
-        </div>
-
-        {order.payment_slip_url ? (
-          <a href={order.payment_slip_url} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-1 text-xs font-semibold" style={{ color: '#4a2728' }}>
-            <ExternalLink size={14} />
-            ดูสลิปโอนเงิน
-          </a>
-        ) : (
-          <p className="text-xs" style={{ color: '#7a4a4b' }}>⏳ ยังไม่ได้แนบสลิป</p>
-        )}
-
-        <div className="flex gap-2 flex-wrap">
-          {nextStatus && (
-            <button onClick={() => updateStatus(order.id, nextStatus)}
-              className="flex-1 rounded-xl py-2 text-xs font-bold"
-              style={{ background: '#4a2728', color: '#f2dada' }}>
-              → {ORDER_STATUS_LABEL[nextStatus]}
-            </button>
-          )}
-          {order.status !== 'cancelled' && order.status !== 'completed' && (
-            <button onClick={() => updateStatus(order.id, 'cancelled')}
-              className="rounded-xl px-3 py-2 text-xs font-bold"
-              style={{ background: '#f8d7da', color: '#721c24' }}>
-              ยกเลิก
-            </button>
-          )}
-        </div>
-      </div>
-    )
-  }
-
   return (
     <main className="min-h-screen pb-8" style={{ background: '#f2dada' }}>
       {/* Top Bar */}
@@ -332,42 +255,128 @@ export default function AdminDashboard() {
             })}
           </div>
 
-          {/* Orders list */}
-          <div className="space-y-3">
-            {filtered.length === 0 && (
-              <div className="text-center py-10 text-sm" style={{ color: '#7a4a4b' }}>ไม่มีออเดอร์</div>
-            )}
-            {filtered.map(order => {
-              const expanded = expandedId === order.id
+          {(() => {
+            const src = filter === 'all' ? orders : orders.filter(o => o.status === filter)
+            const active = src
+              .filter(o => !['completed', 'cancelled'].includes(o.status))
+              .sort((a, b) => a.pickup_date.localeCompare(b.pickup_date))
+            const done = src
+              .filter(o => ['completed', 'cancelled'].includes(o.status))
+              .sort((a, b) => b.pickup_date.localeCompare(a.pickup_date))
+
+            function OrderCard({ order }: { order: Order }) {
               const colors = STATUS_COLORS[order.status]
+              const nextStatus = STATUS_FLOW[STATUS_FLOW.indexOf(order.status) + 1]
+              const seasoning = [
+                order.salt_level ? SALT_LEVEL_LABEL[order.salt_level] : 'เค็มปกติ',
+                order.no_pepper ? 'ไม่ใส่พริกไท' : null,
+                order.sesame_oil ? 'ใส่น้ำมันงา' : null,
+              ].filter(Boolean).join(' · ')
+
               return (
-                <div key={order.id} className="rounded-2xl border-2 overflow-hidden" style={{ background: 'white', borderColor: '#e8c4c4' }}>
-                  <button className="w-full px-4 py-3 flex items-center justify-between gap-2 text-left"
-                    onClick={() => setExpandedId(expanded ? null : order.id)}>
+                <div className="rounded-2xl border-2 overflow-hidden" style={{ background: 'white', borderColor: colors.bg === '#e2e3e5' ? '#e8c4c4' : colors.bg }}>
+                  {/* Header */}
+                  <div className="px-4 pt-3 pb-2 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <span className="text-sm font-black shrink-0" style={{ color: '#4a2728' }}>
                         #{order.id.slice(0, 6).toUpperCase()}
                       </span>
-                      <span className="font-semibold text-sm truncate" style={{ color: '#4a2728' }}>
+                      <span className="font-bold text-sm truncate" style={{ color: '#4a2728' }}>
                         {order.customer_name}
                       </span>
-                      {order.delivery_type === 'grab'
-                        ? <Truck size={14} style={{ color: '#7a4a4b' }} className="shrink-0" />
-                        : <MapPin size={14} style={{ color: '#7a4a4b' }} className="shrink-0" />}
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-sm font-bold" style={{ color: '#4a2728' }}>×{order.quantity}</span>
-                      <span className="text-xs font-bold rounded-full px-2 py-0.5"
-                        style={{ background: colors.bg, color: colors.text }}>
-                        {ORDER_STATUS_LABEL[order.status]}
+                    <span className="text-xs font-bold rounded-full px-2 py-0.5 shrink-0"
+                      style={{ background: colors.bg, color: colors.text }}>
+                      {ORDER_STATUS_LABEL[order.status]}
+                    </span>
+                  </div>
+
+                  {/* Details */}
+                  <div className="px-4 pb-3 space-y-1.5 text-xs" style={{ color: '#4a2728' }}>
+                    <div className="flex items-center gap-3">
+                      <span className="font-black text-base">×{order.quantity}</span>
+                      <span className="font-bold">{order.total_amount.toLocaleString()} บาท</span>
+                      <span className="ml-auto font-bold" style={{ color: '#1a5eb8' }}>
+                        📅 {new Date(order.pickup_date).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' })}
                       </span>
                     </div>
-                  </button>
-                  {expanded && <OrderDetail order={order} />}
+
+                    <div className="flex items-center gap-1.5">
+                      {order.delivery_type === 'grab'
+                        ? <Truck size={12} style={{ color: '#7a4a4b' }} />
+                        : <MapPin size={12} style={{ color: '#7a4a4b' }} />}
+                      <span style={{ color: '#7a4a4b' }}>
+                        {order.delivery_type === 'grab'
+                          ? order.delivery_address || 'Grab'
+                          : PICKUP_LOCATIONS[order.pickup_location!]}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span style={{ color: '#7a4a4b' }}>🧂 {seasoning}</span>
+                      <a href={`tel:${order.phone}`} className="font-bold underline" style={{ color: '#4a2728' }}>
+                        {order.phone}
+                      </a>
+                    </div>
+
+                    {order.note && (
+                      <p style={{ color: '#7a4a4b' }}>📝 {order.note}</p>
+                    )}
+
+                    <div className="flex items-center justify-between pt-0.5">
+                      {order.payment_slip_url ? (
+                        <a href={order.payment_slip_url} target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-1 font-semibold" style={{ color: '#1a7a3c' }}>
+                          <ExternalLink size={12} /> ดูสลิป
+                        </a>
+                      ) : (
+                        <span style={{ color: '#b09090' }}>⏳ ยังไม่แนบสลิป</span>
+                      )}
+
+                      <div className="flex gap-2">
+                        {nextStatus && (
+                          <button onClick={() => updateStatus(order.id, nextStatus)}
+                            className="rounded-lg px-3 py-1.5 text-xs font-bold"
+                            style={{ background: '#4a2728', color: '#f2dada' }}>
+                            → {ORDER_STATUS_LABEL[nextStatus]}
+                          </button>
+                        )}
+                        {!['cancelled', 'completed'].includes(order.status) && (
+                          <button onClick={() => updateStatus(order.id, 'cancelled')}
+                            className="rounded-lg px-2 py-1.5 text-xs font-bold"
+                            style={{ background: '#f8d7da', color: '#721c24' }}>
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )
-            })}
-          </div>
+            }
+
+            return (
+              <div className="space-y-3">
+                {active.length === 0 && filter === 'all' && (
+                  <div className="text-center py-10 text-sm" style={{ color: '#7a4a4b' }}>ไม่มีออเดอร์ที่รอดำเนินการ</div>
+                )}
+                {active.map(o => <OrderCard key={o.id} order={o} />)}
+
+                {done.length > 0 && (
+                  <>
+                    <button
+                      onClick={() => setExpandedId(expandedId === 'done' ? null : 'done')}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl border-2 text-sm font-bold"
+                      style={{ background: '#f5f5f5', borderColor: '#e8c4c4', color: '#7a4a4b' }}>
+                      <span>เสร็จสิ้น / ยกเลิก ({done.length} รายการ)</span>
+                      <span>{expandedId === 'done' ? '▲' : '▼'}</span>
+                    </button>
+                    {expandedId === 'done' && done.map(o => <OrderCard key={o.id} order={o} />)}
+                  </>
+                )}
+              </div>
+            )
+          })()}
         </>}
 
         {/* CUSTOMERS TAB */}
