@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { MapPin, Truck, ExternalLink, RefreshCw, ToggleLeft, ToggleRight, LogOut, Users, ClipboardList, Tag, X } from 'lucide-react'
+import { MapPin, Truck, ExternalLink, RefreshCw, ToggleLeft, ToggleRight, LogOut, Users, ClipboardList, Tag, X, ChefHat } from 'lucide-react'
 import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, SALT_LEVEL_LABEL, PRICE_PER_PIECE, type Order, type OrderStatus } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 
@@ -83,7 +83,7 @@ export default function AdminDashboard() {
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [accepting, setAccepting] = useState(true)
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<'orders' | 'customers'>('orders')
+  const [tab, setTab] = useState<'orders' | 'summary' | 'customers'>('orders')
   const [filter, setFilter] = useState<OrderStatus | 'all'>('all')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [expandedCustomer, setExpandedCustomer] = useState<string | null>(null)
@@ -216,13 +216,14 @@ export default function AdminDashboard() {
         </div>
 
         {/* Tab switcher */}
-        <div className="grid grid-cols-2 gap-2 rounded-2xl p-1 border-2" style={{ background: 'white', borderColor: '#e8c4c4' }}>
+        <div className="grid grid-cols-3 gap-1 rounded-2xl p-1 border-2" style={{ background: 'white', borderColor: '#e8c4c4' }}>
           {([
-            { key: 'orders', label: 'ออเดอร์', icon: <ClipboardList size={16} /> },
-            { key: 'customers', label: 'ลูกค้า', icon: <Users size={16} /> },
+            { key: 'orders', label: 'ออเดอร์', icon: <ClipboardList size={15} /> },
+            { key: 'summary', label: 'สรุป', icon: <ChefHat size={15} /> },
+            { key: 'customers', label: 'ลูกค้า', icon: <Users size={15} /> },
           ] as const).map(({ key, label, icon }) => (
             <button key={key} onClick={() => setTab(key)}
-              className="flex items-center justify-center gap-2 rounded-xl py-2 font-bold text-sm transition-all"
+              className="flex items-center justify-center gap-1.5 rounded-xl py-2 font-bold text-xs transition-all"
               style={{
                 background: tab === key ? '#4a2728' : 'transparent',
                 color: tab === key ? '#f2dada' : '#4a2728',
@@ -378,6 +379,130 @@ export default function AdminDashboard() {
             )
           })()}
         </>}
+
+        {/* SUMMARY TAB */}
+        {tab === 'summary' && (() => {
+          const workOrders = orders.filter(o => o.status === 'confirmed' || o.status === 'ready')
+
+          // Group by pickup_date
+          const byDate = new Map<string, Order[]>()
+          for (const o of workOrders) {
+            const d = o.pickup_date.slice(0, 10)
+            if (!byDate.has(d)) byDate.set(d, [])
+            byDate.get(d)!.push(o)
+          }
+          const sortedDates = Array.from(byDate.keys()).sort()
+
+          return (
+            <div className="space-y-4">
+              {workOrders.length === 0 && (
+                <div className="text-center py-10 text-sm rounded-2xl border-2"
+                  style={{ background: 'white', borderColor: '#e8c4c4', color: '#7a4a4b' }}>
+                  ไม่มีออเดอร์ที่ยืนยันแล้ว
+                </div>
+              )}
+
+              {/* Grand total */}
+              {workOrders.length > 0 && (
+                <div className="rounded-2xl p-4 border-2 flex items-center justify-between"
+                  style={{ background: '#4a2728', borderColor: '#4a2728' }}>
+                  <span className="font-bold text-base" style={{ color: '#f2dada' }}>รวมทั้งหมด</span>
+                  <span className="text-3xl font-black" style={{ color: '#f2dada' }}>
+                    {workOrders.reduce((s, o) => s + o.quantity, 0)} ชิ้น
+                  </span>
+                </div>
+              )}
+
+              {sortedDates.map(date => {
+                const dayOrders = byDate.get(date)!
+                const totalPieces = dayOrders.reduce((s, o) => s + o.quantity, 0)
+
+                // Build combinations
+                const combos = new Map<string, { label: string; count: number }>()
+                for (const o of dayOrders) {
+                  const salt = SALT_LEVEL_LABEL[o.salt_level ?? 'normal']
+                  const parts = [salt]
+                  if (o.no_pepper) parts.push('ไม่ใส่พริกไท')
+                  if (o.sesame_oil) parts.push('ใส่น้ำมันงา')
+                  const key = parts.join('|')
+                  if (!combos.has(key)) combos.set(key, { label: parts.join(' · '), count: 0 })
+                  combos.get(key)!.count += o.quantity
+                }
+
+                // By location
+                const byLocation = new Map<string, number>()
+                for (const o of dayOrders) {
+                  const loc = o.delivery_type === 'grab'
+                    ? '🛵 Grab'
+                    : PICKUP_LOCATIONS[o.pickup_location!] ?? 'นัดรับ'
+                  byLocation.set(loc, (byLocation.get(loc) ?? 0) + o.quantity)
+                }
+
+                return (
+                  <div key={date} className="rounded-2xl border-2 overflow-hidden"
+                    style={{ background: 'white', borderColor: '#e8c4c4' }}>
+                    {/* Date header */}
+                    <div className="px-4 py-3 flex items-center justify-between"
+                      style={{ background: '#d6e8ff' }}>
+                      <span className="font-black text-base" style={{ color: '#1a5eb8' }}>
+                        📅 {new Date(date + 'T00:00:00').toLocaleDateString('th-TH', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                      </span>
+                      <span className="text-2xl font-black" style={{ color: '#1a5eb8' }}>
+                        {totalPieces} ชิ้น
+                      </span>
+                    </div>
+
+                    <div className="px-4 py-3 space-y-3">
+                      {/* Seasoning breakdown */}
+                      <div>
+                        <p className="text-xs font-bold mb-2" style={{ color: '#7a4a4b' }}>🧂 แยกตามสูตร</p>
+                        <div className="space-y-1.5">
+                          {Array.from(combos.values()).map(({ label, count }) => (
+                            <div key={label} className="flex items-center justify-between rounded-xl px-3 py-2"
+                              style={{ background: '#f9f0f0' }}>
+                              <span className="text-sm font-medium" style={{ color: '#4a2728' }}>{label}</span>
+                              <span className="text-lg font-black" style={{ color: '#4a2728' }}>{count} ชิ้น</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* By location */}
+                      <div>
+                        <p className="text-xs font-bold mb-2" style={{ color: '#7a4a4b' }}>📍 แยกตามจุดรับ</p>
+                        <div className="space-y-1.5">
+                          {Array.from(byLocation.entries()).map(([loc, count]) => (
+                            <div key={loc} className="flex items-center justify-between rounded-xl px-3 py-2"
+                              style={{ background: '#f9f0f0' }}>
+                              <span className="text-sm font-medium" style={{ color: '#4a2728' }}>{loc}</span>
+                              <span className="text-lg font-black" style={{ color: '#4a2728' }}>{count} ชิ้น</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Order list quick ref */}
+                      <div>
+                        <p className="text-xs font-bold mb-2" style={{ color: '#7a4a4b' }}>รายการ</p>
+                        <div className="space-y-1">
+                          {dayOrders.map(o => (
+                            <div key={o.id} className="flex items-center gap-2 text-xs" style={{ color: '#4a2728' }}>
+                              <span className="font-black">×{o.quantity}</span>
+                              <span className="font-semibold truncate flex-1">{o.customer_name}</span>
+                              <span style={{ color: '#7a4a4b' }}>
+                                {[SALT_LEVEL_LABEL[o.salt_level ?? 'normal'], o.no_pepper ? 'ไม่พริก' : null, o.sesame_oil ? 'งา' : null].filter(Boolean).join(' ')}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })()}
 
         {/* CUSTOMERS TAB */}
         {tab === 'customers' && (
