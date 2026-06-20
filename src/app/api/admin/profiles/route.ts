@@ -16,10 +16,31 @@ async function checkAdmin() {
 export async function GET() {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data } = await supabaseAdmin
+  // Get all auth users
+  const { data: authData } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 })
+  const authUsers = authData?.users ?? []
+
+  // Get all profiles
+  const { data: profiles } = await supabaseAdmin
     .from('profiles')
     .select('id, display_name, phone, created_at')
-    .order('created_at', { ascending: false })
 
-  return NextResponse.json(data ?? [])
+  const profileMap = new Map((profiles ?? []).map(p => [p.id, p]))
+  const adminEmail = process.env.ADMIN_EMAIL
+
+  const result = authUsers
+    .filter(u => u.email !== adminEmail)
+    .map(u => {
+      const profile = profileMap.get(u.id)
+      return {
+        id: u.id,
+        email: u.email ?? '',
+        display_name: profile?.display_name || u.user_metadata?.full_name || u.user_metadata?.name || '',
+        phone: profile?.phone || '',
+        created_at: u.created_at,
+      }
+    })
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+  return NextResponse.json(result)
 }

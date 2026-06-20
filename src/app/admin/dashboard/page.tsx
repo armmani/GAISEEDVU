@@ -19,6 +19,7 @@ const STATUS_FLOW: OrderStatus[] = ['pending', 'confirmed', 'ready', 'completed'
 
 interface Profile {
   id: string
+  email: string
   display_name: string
   phone: string
   created_at: string
@@ -27,6 +28,7 @@ interface Profile {
 interface CustomerSummary {
   name: string
   phone: string
+  email: string
   userId: string | null
   orders: Order[]
   totalOrders: number
@@ -51,6 +53,7 @@ function buildCustomers(orders: Order[], profiles: Profile[]): CustomerSummary[]
     map.set(p.id, {
       name: p.display_name || '(ยังไม่ได้ตั้งชื่อ)',
       phone: p.phone || '—',
+      email: p.email || '',
       userId: p.id,
       orders: [],
       totalOrders: 0,
@@ -64,7 +67,7 @@ function buildCustomers(orders: Order[], profiles: Profile[]): CustomerSummary[]
   for (const o of orders) {
     const key = o.user_id ?? `guest__${o.customer_name}__${o.phone}`
     if (!map.has(key)) {
-      map.set(key, { name: o.customer_name, phone: o.phone, userId: o.user_id ?? null, orders: [], totalOrders: 0, totalPieces: 0, totalSpent: 0, joinedAt: null })
+      map.set(key, { name: o.customer_name, phone: o.phone, email: '', userId: o.user_id ?? null, orders: [], totalOrders: 0, totalPieces: 0, totalSpent: 0, joinedAt: null })
     }
     const c = map.get(key)!
     if (o.user_id && c.name === '(ยังไม่ได้ตั้งชื่อ)' && o.customer_name) c.name = o.customer_name
@@ -532,14 +535,19 @@ export default function AdminDashboard() {
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <a href={`tel:${c.phone}`} className="text-xs underline" style={{ color: '#7a4a4b' }}
-                          onClick={e => e.stopPropagation()}>
-                          {c.phone}
-                        </a>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                        {c.phone && c.phone !== '—' && (
+                          <a href={`tel:${c.phone}`} className="text-xs underline" style={{ color: '#7a4a4b' }}
+                            onClick={e => e.stopPropagation()}>
+                            {c.phone}
+                          </a>
+                        )}
+                        {c.email && (
+                          <span className="text-xs" style={{ color: '#b09090' }}>{c.email}</span>
+                        )}
                         {c.joinedAt && (
                           <span className="text-xs" style={{ color: '#b09090' }}>
-                            สมัคร {new Date(c.joinedAt).toLocaleDateString('th-TH', { month: 'short', day: 'numeric', year: '2-digit' })}
+                            · สมัคร {new Date(c.joinedAt).toLocaleDateString('th-TH', { month: 'short', day: 'numeric', year: '2-digit' })}
                           </span>
                         )}
                       </div>
