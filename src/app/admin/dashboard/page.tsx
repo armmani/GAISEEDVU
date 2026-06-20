@@ -522,7 +522,7 @@ export default function AdminDashboard() {
               const pricingActive = pricing && !pricingExpired
 
               return (
-                <div key={key} className="rounded-2xl border-2 overflow-hidden" style={{ background: 'white', borderColor: pricingActive ? '#b8860b' : '#e8c4c4' }}>
+                <div key={key} className="rounded-2xl border-2 overflow-hidden" style={{ background: 'white', borderColor: pricingActive ? '#c0392b' : '#e8c4c4' }}>
                   <button className="w-full px-4 py-3 flex items-center justify-between gap-2 text-left"
                     onClick={() => setExpandedCustomer(expanded ? null : key)}>
                     <div className="flex-1 min-w-0">
@@ -530,7 +530,7 @@ export default function AdminDashboard() {
                         <p className="font-bold text-sm truncate" style={{ color: '#4a2728' }}>{c.name}</p>
                         {pricingActive && (
                           <span className="text-xs font-bold px-1.5 py-0.5 rounded-full shrink-0"
-                            style={{ background: '#fff3cd', color: '#b8860b' }}>
+                            style={{ background: '#ffd6d6', color: '#c0392b' }}>
                             ราคาพิเศษ {pricing!.price_per_piece}฿
                           </span>
                         )}
