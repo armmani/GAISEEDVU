@@ -30,7 +30,7 @@ export default function OrderPage() {
   const [noPepper, setNoPepper] = useState(false)
   const [sesameOil, setSesameOil] = useState(false)
   const [mapCoords, setMapCoords] = useState({ lat: 13.7563, lng: 100.5018 })
-  const [blockedDates, setBlockedDates] = useState<string[]>([])
+  const [blockedRanges, setBlockedRanges] = useState<{ start_date: string; end_date: string }[]>([])
   const [form, setForm] = useState({
     customer_name: '',
     phone: '',
@@ -61,7 +61,7 @@ export default function OrderPage() {
       .catch(() => {})
     fetch('/api/blocked-dates')
       .then(r => r.json())
-      .then(d => { if (Array.isArray(d)) setBlockedDates(d) })
+      .then(d => { if (Array.isArray(d)) setBlockedRanges(d) })
       .catch(() => {})
   }, [])
 
@@ -259,8 +259,9 @@ export default function OrderPage() {
             <input type="date" value={form.pickup_date}
               onChange={e => {
                 const val = e.target.value
-                if (blockedDates.includes(val)) {
-                  toast.error('วันนี้ไม่สะดวกรับออเดอร์ กรุณาเลือกวันอื่น')
+                const isBlocked = blockedRanges.some(r => val >= r.start_date && val <= r.end_date)
+                if (isBlocked) {
+                  toast.error('วันที่เลือกไม่สะดวกรับออเดอร์ กรุณาเลือกวันอื่น')
                   set('pickup_date', '')
                 } else {
                   set('pickup_date', val)

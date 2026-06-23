@@ -28,16 +28,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'วันรับต้องเป็นวันพรุ่งนี้เป็นต้นไป' }, { status: 400 })
     }
 
-    const [{ data: settings }, { data: blocked }] = await Promise.all([
+    const [{ data: settings }, { data: blockedRanges }] = await Promise.all([
       supabaseAdmin.from('settings').select('is_accepting_orders').single(),
-      supabaseAdmin.from('blocked_dates').select('date').eq('date', pickup_date).maybeSingle(),
+      supabaseAdmin.from('blocked_dates').select('start_date, end_date')
+        .lte('start_date', pickup_date).gte('end_date', pickup_date),
     ])
 
     if (settings && !settings.is_accepting_orders) {
       return NextResponse.json({ error: 'ขณะนี้ปิดรับออเดอร์ชั่วคราว' }, { status: 400 })
     }
 
-    if (blocked) {
+    if (blockedRanges && blockedRanges.length > 0) {
       return NextResponse.json({ error: 'วันที่เลือกไม่สะดวกรับออเดอร์ กรุณาเลือกวันอื่น' }, { status: 400 })
     }
 

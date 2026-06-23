@@ -93,8 +93,9 @@ export default function AdminDashboard() {
   const [pricingMap, setPricingMap] = useState<Record<string, CustomerPricing>>({})
   const [pricingForm, setPricingForm] = useState<{ userId: string; price: string; expires_at: string; note: string } | null>(null)
   const [pricingLoading, setPricingLoading] = useState(false)
-  const [blockedDates, setBlockedDates] = useState<{ id: string; date: string; note: string | null }[]>([])
-  const [newBlock, setNewBlock] = useState({ date: '', note: '' })
+  const [blockedDates, setBlockedDates] = useState<{ id: string; start_date: string; end_date: string; note: string | null }[]>([])
+  const [newBlock, setNewBlock] = useState({ start_date: '', end_date: '', note: '' })
+  const [editBlock, setEditBlock] = useState<{ id: string; start_date: string; end_date: string; note: string } | null>(null)
   const [blockLoading, setBlockLoading] = useState(false)
 
   async function fetchData() {
@@ -142,26 +143,43 @@ export default function AdminDashboard() {
   }
 
   async function addBlockedDate() {
-    if (!newBlock.date) return toast.error('กรุณาเลือกวันที่')
+    if (!newBlock.start_date) return toast.error('กรุณาเลือกวันเริ่ม')
     setBlockLoading(true)
+    const end = newBlock.end_date || newBlock.start_date
     const res = await fetch('/api/admin/blocked-dates', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ date: newBlock.date, note: newBlock.note || null }),
+      body: JSON.stringify({ start_date: newBlock.start_date, end_date: end, note: newBlock.note || null }),
     })
     if (res.ok) {
       toast.success('เพิ่มวันหยุดแล้ว')
-      setNewBlock({ date: '', note: '' })
+      setNewBlock({ start_date: '', end_date: '', note: '' })
       fetchData()
     }
     setBlockLoading(false)
   }
 
-  async function removeBlockedDate(date: string) {
+  async function saveEditBlock() {
+    if (!editBlock) return
+    setBlockLoading(true)
+    const res = await fetch('/api/admin/blocked-dates', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editBlock),
+    })
+    if (res.ok) {
+      toast.success('แก้ไขแล้ว')
+      setEditBlock(null)
+      fetchData()
+    }
+    setBlockLoading(false)
+  }
+
+  async function removeBlockedDate(id: string) {
     await fetch('/api/admin/blocked-dates', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ date }),
+      body: JSON.stringify({ id }),
     })
     toast.success('ลบวันหยุดแล้ว')
     fetchData()
@@ -712,24 +730,35 @@ export default function AdminDashboard() {
         {/* CALENDAR TAB */}
         {tab === 'calendar' && (
           <div className="space-y-4">
-            {/* Add new blocked date */}
+            {/* Add new blocked range */}
             <div className="rounded-2xl p-5 border-2" style={{ background: 'white', borderColor: '#e8c4c4' }}>
               <h3 className="font-bold text-base mb-3 flex items-center gap-2" style={{ color: '#4a2728' }}>
-                <CalendarOff size={16} /> เพิ่มวันที่ไม่สะดวก
+                <CalendarOff size={16} /> เพิ่มช่วงวันที่ไม่สะดวก
               </h3>
               <div className="space-y-2">
-                <div className="flex gap-2">
-                  <input type="date" value={newBlock.date}
-                    onChange={e => setNewBlock(p => ({ ...p, date: e.target.value }))}
-                    className="flex-1 rounded-xl px-3 py-2.5 border-2 text-sm font-medium"
-                    style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <p className="text-xs mb-1 font-semibold" style={{ color: '#7a4a4b' }}>ตั้งแต่วันที่</p>
+                    <input type="date" value={newBlock.start_date}
+                      onChange={e => setNewBlock(p => ({ ...p, start_date: e.target.value, end_date: p.end_date || e.target.value }))}
+                      className="w-full rounded-xl px-3 py-2.5 border-2 text-sm font-medium"
+                      style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
+                  </div>
+                  <div>
+                    <p className="text-xs mb-1 font-semibold" style={{ color: '#7a4a4b' }}>ถึงวันที่</p>
+                    <input type="date" value={newBlock.end_date}
+                      min={newBlock.start_date}
+                      onChange={e => setNewBlock(p => ({ ...p, end_date: e.target.value }))}
+                      className="w-full rounded-xl px-3 py-2.5 border-2 text-sm font-medium"
+                      style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
+                  </div>
                 </div>
                 <input type="text" value={newBlock.note}
                   onChange={e => setNewBlock(p => ({ ...p, note: e.target.value }))}
-                  placeholder="หมายเหตุ เช่น วันหยุดส่วนตัว (ไม่บังคับ)"
+                  placeholder="หมายเหตุ เช่น วันหยุดสงกรานต์ (ไม่บังคับ)"
                   className="w-full rounded-xl px-3 py-2.5 border-2 text-sm"
                   style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
-                <button onClick={addBlockedDate} disabled={blockLoading || !newBlock.date}
+                <button onClick={addBlockedDate} disabled={blockLoading || !newBlock.start_date}
                   className="w-full rounded-xl py-2.5 text-sm font-bold disabled:opacity-50"
                   style={{ background: '#4a2728', color: '#f2dada' }}>
                   {blockLoading ? 'กำลังบันทึก...' : '+ เพิ่มวันหยุด'}
@@ -737,28 +766,77 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* List of blocked dates */}
+            {/* List */}
             <div className="rounded-2xl border-2 overflow-hidden" style={{ background: 'white', borderColor: '#e8c4c4' }}>
               {blockedDates.length === 0 ? (
                 <p className="text-center py-8 text-sm" style={{ color: '#7a4a4b' }}>ยังไม่มีวันที่ปิดรับออเดอร์</p>
-              ) : (
-                blockedDates.map((b, i) => (
-                  <div key={b.date} className={`px-4 py-3 flex items-center justify-between gap-2 ${i > 0 ? 'border-t' : ''}`}
-                    style={{ borderColor: '#e8c4c4' }}>
-                    <div>
-                      <p className="text-sm font-bold" style={{ color: '#4a2728' }}>
-                        {new Date(b.date + 'T00:00:00').toLocaleDateString('th-TH', { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' })}
-                      </p>
-                      {b.note && <p className="text-xs mt-0.5" style={{ color: '#7a4a4b' }}>{b.note}</p>}
-                    </div>
-                    <button onClick={() => removeBlockedDate(b.date)}
-                      className="p-1.5 rounded-lg transition-colors"
-                      style={{ color: '#c0392b' }}>
-                      <X size={18} />
-                    </button>
+              ) : blockedDates.map((b, i) => {
+                const isEditing = editBlock?.id === b.id
+                const isSame = b.start_date === b.end_date
+                const fmt = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })
+                return (
+                  <div key={b.id} className={`${i > 0 ? 'border-t' : ''}`} style={{ borderColor: '#e8c4c4' }}>
+                    {!isEditing ? (
+                      <div className="px-4 py-3 flex items-center justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold" style={{ color: '#4a2728' }}>
+                            {isSame ? fmt(b.start_date) : `${fmt(b.start_date)} – ${fmt(b.end_date)}`}
+                          </p>
+                          {b.note && <p className="text-xs mt-0.5" style={{ color: '#7a4a4b' }}>{b.note}</p>}
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          <button onClick={() => setEditBlock({ id: b.id, start_date: b.start_date, end_date: b.end_date, note: b.note ?? '' })}
+                            className="text-xs font-semibold px-2 py-1 rounded-lg"
+                            style={{ color: '#1a5eb8', background: '#eef2ff' }}>
+                            แก้ไข
+                          </button>
+                          <button onClick={() => removeBlockedDate(b.id)}
+                            className="p-1.5 rounded-lg" style={{ color: '#c0392b' }}>
+                            <X size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="px-4 py-3 space-y-2" style={{ background: '#fffdf5' }}>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <p className="text-xs mb-1 font-semibold" style={{ color: '#7a4a4b' }}>ตั้งแต่วันที่</p>
+                            <input type="date" value={editBlock.start_date}
+                              onChange={e => setEditBlock(p => p ? { ...p, start_date: e.target.value } : null)}
+                              className="w-full rounded-lg px-2 py-2 border-2 text-sm"
+                              style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
+                          </div>
+                          <div>
+                            <p className="text-xs mb-1 font-semibold" style={{ color: '#7a4a4b' }}>ถึงวันที่</p>
+                            <input type="date" value={editBlock.end_date}
+                              min={editBlock.start_date}
+                              onChange={e => setEditBlock(p => p ? { ...p, end_date: e.target.value } : null)}
+                              className="w-full rounded-lg px-2 py-2 border-2 text-sm"
+                              style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
+                          </div>
+                        </div>
+                        <input type="text" value={editBlock.note}
+                          onChange={e => setEditBlock(p => p ? { ...p, note: e.target.value } : null)}
+                          placeholder="หมายเหตุ (ไม่บังคับ)"
+                          className="w-full rounded-lg px-2 py-2 border-2 text-sm"
+                          style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
+                        <div className="flex gap-2">
+                          <button onClick={saveEditBlock} disabled={blockLoading}
+                            className="flex-1 rounded-lg py-2 text-xs font-bold disabled:opacity-50"
+                            style={{ background: '#4a2728', color: '#f2dada' }}>
+                            {blockLoading ? 'กำลังบันทึก...' : 'บันทึก'}
+                          </button>
+                          <button onClick={() => setEditBlock(null)}
+                            className="px-3 rounded-lg py-2 text-xs font-bold"
+                            style={{ background: '#e8c4c4', color: '#4a2728' }}>
+                            ยกเลิก
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                ))
-              )}
+                )
+              })}
             </div>
           </div>
         )}

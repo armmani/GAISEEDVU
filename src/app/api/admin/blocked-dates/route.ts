@@ -18,17 +18,31 @@ export async function GET() {
   const { data } = await supabaseAdmin
     .from('blocked_dates')
     .select('*')
-    .order('date', { ascending: true })
+    .order('start_date', { ascending: true })
   return NextResponse.json(data ?? [])
 }
 
 export async function POST(req: NextRequest) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const { date, note } = await req.json()
-  if (!date) return NextResponse.json({ error: 'date required' }, { status: 400 })
+  const { start_date, end_date, note } = await req.json()
+  if (!start_date || !end_date) return NextResponse.json({ error: 'start_date and end_date required' }, { status: 400 })
   const { data, error } = await supabaseAdmin
     .from('blocked_dates')
-    .upsert({ date, note: note || null }, { onConflict: 'date' })
+    .insert({ start_date, end_date: end_date >= start_date ? end_date : start_date, note: note || null })
+    .select()
+    .single()
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  return NextResponse.json(data)
+}
+
+export async function PATCH(req: NextRequest) {
+  if (!await checkAdmin()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { id, start_date, end_date, note } = await req.json()
+  if (!id || !start_date || !end_date) return NextResponse.json({ error: 'id, start_date and end_date required' }, { status: 400 })
+  const { data, error } = await supabaseAdmin
+    .from('blocked_dates')
+    .update({ start_date, end_date: end_date >= start_date ? end_date : start_date, note: note || null })
+    .eq('id', id)
     .select()
     .single()
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
@@ -37,7 +51,7 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   if (!await checkAdmin()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const { date } = await req.json()
-  await supabaseAdmin.from('blocked_dates').delete().eq('date', date)
+  const { id } = await req.json()
+  await supabaseAdmin.from('blocked_dates').delete().eq('id', id)
   return NextResponse.json({ ok: true })
 }
