@@ -12,8 +12,11 @@ const MapPicker = dynamic(() => import('@/components/MapPicker'), { ssr: false }
 
 function getMinDate() {
   const d = new Date()
-  d.setDate(d.getDate() + 2)
-  return d.toISOString().split('T')[0]
+  d.setDate(d.getDate() + 1)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
 export default function OrderPage() {
@@ -27,6 +30,7 @@ export default function OrderPage() {
   const [noPepper, setNoPepper] = useState(false)
   const [sesameOil, setSesameOil] = useState(false)
   const [mapCoords, setMapCoords] = useState({ lat: 13.7563, lng: 100.5018 })
+  const [blockedDates, setBlockedDates] = useState<string[]>([])
   const [form, setForm] = useState({
     customer_name: '',
     phone: '',
@@ -54,6 +58,10 @@ export default function OrderPage() {
           }))
         }
       })
+      .catch(() => {})
+    fetch('/api/blocked-dates')
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d)) setBlockedDates(d) })
       .catch(() => {})
   }, [])
 
@@ -248,11 +256,20 @@ export default function OrderPage() {
 
           <div className="rounded-2xl p-5 border-2" style={{ background: 'white', borderColor: '#e8c4c4' }}>
             <h3 className="font-bold text-lg mb-3" style={{ color: '#4a2728' }}>วันที่รับสินค้า</h3>
-            <input type="date" value={form.pickup_date} onChange={e => set('pickup_date', e.target.value)}
+            <input type="date" value={form.pickup_date}
+              onChange={e => {
+                const val = e.target.value
+                if (blockedDates.includes(val)) {
+                  toast.error('วันนี้ไม่สะดวกรับออเดอร์ กรุณาเลือกวันอื่น')
+                  set('pickup_date', '')
+                } else {
+                  set('pickup_date', val)
+                }
+              }}
               min={getMinDate()}
               className="w-full rounded-xl px-4 py-3 border-2 text-sm font-medium"
               style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
-            <p className="text-xs mt-2" style={{ color: '#7a4a4b' }}>สั่งล่วงหน้าอย่างน้อย 2 วัน</p>
+            <p className="text-xs mt-2" style={{ color: '#7a4a4b' }}>สั่งล่วงหน้าอย่างน้อย 1 วัน</p>
           </div>
 
           <div className="rounded-2xl p-5 border-2 space-y-4" style={{ background: 'white', borderColor: '#e8c4c4' }}>

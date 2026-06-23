@@ -5,7 +5,6 @@ import { useParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import QRCode from 'qrcode'
 import { CheckCircle, Upload, Clock, MapPin, Truck } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, type Order } from '@/lib/types'
 import BottomNav from '@/components/BottomNav'
 import ChickenLoader from '@/components/ChickenLoader'
@@ -61,11 +60,12 @@ export default function OrderConfirmPage() {
   const [uploading, setUploading] = useState(false)
   const [slipUploaded, setSlipUploaded] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const supabase = createClient()
 
   useEffect(() => {
     async function load() {
-      const { data } = await supabase.from('orders').select('*').eq('id', id).single()
+      const res = await fetch(`/api/account/orders/${id}`)
+      if (!res.ok) return
+      const data = await res.json()
       if (data) {
         setOrder(data)
         setSlipUploaded(!!data.payment_slip_url)

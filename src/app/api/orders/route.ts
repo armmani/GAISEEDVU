@@ -21,13 +21,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'ข้อมูลไม่ครบ' }, { status: 400 })
     }
 
-    const { data: settings } = await supabaseAdmin
-      .from('settings')
-      .select('is_accepting_orders')
-      .single()
+    // Validate pickup_date must be at least tomorrow (Thailand UTC+7)
+    const nowTH = new Date(Date.now() + 7 * 60 * 60 * 1000)
+    const todayTH = nowTH.toISOString().split('T')[0]
+    if (pickup_date <= todayTH) {
+      return NextResponse.json({ error: 'วันรับต้องเป็นวันพรุ่งนี้เป็นต้นไป' }, { status: 400 })
+    }
+
+    const [{ data: settings }, { data: blocked }] = await Promise.all([
+      supabaseAdmin.from('settings').select('is_accepting_orders').single(),
+      supabaseAdmin.from('blocked_dates').select('date').eq('date', pickup_date).maybeSingle(),
+    ])
 
     if (settings && !settings.is_accepting_orders) {
       return NextResponse.json({ error: 'ขณะนี้ปิดรับออเดอร์ชั่วคราว' }, { status: 400 })
+    }
+
+    if (blocked) {
+      return NextResponse.json({ error: 'วันที่เลือกไม่สะดวกรับออเดอร์ กรุณาเลือกวันอื่น' }, { status: 400 })
     }
 
     // Get user's special price (server-side, cannot be tampered)

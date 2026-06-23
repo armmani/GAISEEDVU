@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { MapPin, Truck, ExternalLink, RefreshCw, ToggleLeft, ToggleRight, LogOut, Users, ClipboardList, Tag, X, ChefHat } from 'lucide-react'
+import { MapPin, Truck, ExternalLink, RefreshCw, ToggleLeft, ToggleRight, LogOut, Users, ClipboardList, Tag, X, ChefHat, CalendarOff } from 'lucide-react'
 import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, SALT_LEVEL_LABEL, PRICE_PER_PIECE, type Order, type OrderStatus } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 
@@ -86,25 +86,29 @@ export default function AdminDashboard() {
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [accepting, setAccepting] = useState(true)
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<'orders' | 'summary' | 'customers'>('orders')
+  const [tab, setTab] = useState<'orders' | 'summary' | 'customers' | 'calendar'>('orders')
   const [filter, setFilter] = useState<OrderStatus | 'all'>('all')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [expandedCustomer, setExpandedCustomer] = useState<string | null>(null)
   const [pricingMap, setPricingMap] = useState<Record<string, CustomerPricing>>({})
   const [pricingForm, setPricingForm] = useState<{ userId: string; price: string; expires_at: string; note: string } | null>(null)
   const [pricingLoading, setPricingLoading] = useState(false)
+  const [blockedDates, setBlockedDates] = useState<{ id: string; date: string; note: string | null }[]>([])
+  const [newBlock, setNewBlock] = useState({ date: '', note: '' })
+  const [blockLoading, setBlockLoading] = useState(false)
 
   async function fetchData() {
     setLoading(true)
-    const [ordersRes, settingsRes, pricingRes, profilesRes] = await Promise.all([
+    const [ordersRes, settingsRes, pricingRes, profilesRes, blockedRes] = await Promise.all([
       fetch('/api/admin/orders'),
       fetch('/api/admin/settings'),
       fetch('/api/admin/customer-pricing'),
       fetch('/api/admin/profiles'),
+      fetch('/api/admin/blocked-dates'),
     ])
     if (ordersRes.status === 401) { router.push('/admin/login'); return }
-    const [ordersData, settingsData, pricingData, profilesData] = await Promise.all([
-      ordersRes.json(), settingsRes.json(), pricingRes.json(), profilesRes.json(),
+    const [ordersData, settingsData, pricingData, profilesData, blockedData] = await Promise.all([
+      ordersRes.json(), settingsRes.json(), pricingRes.json(), profilesRes.json(), blockedRes.json(),
     ])
     setOrders(ordersData)
     setProfiles(Array.isArray(profilesData) ? profilesData : [])
@@ -112,6 +116,7 @@ export default function AdminDashboard() {
     const pm: Record<string, CustomerPricing> = {}
     if (Array.isArray(pricingData)) pricingData.forEach((p: CustomerPricing) => { pm[p.user_id] = p })
     setPricingMap(pm)
+    setBlockedDates(Array.isArray(blockedData) ? blockedData : [])
     setLoading(false)
   }
 
@@ -134,6 +139,32 @@ export default function AdminDashboard() {
       fetchData()
     }
     setPricingLoading(false)
+  }
+
+  async function addBlockedDate() {
+    if (!newBlock.date) return toast.error('กรุณาเลือกวันที่')
+    setBlockLoading(true)
+    const res = await fetch('/api/admin/blocked-dates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: newBlock.date, note: newBlock.note || null }),
+    })
+    if (res.ok) {
+      toast.success('เพิ่มวันหยุดแล้ว')
+      setNewBlock({ date: '', note: '' })
+      fetchData()
+    }
+    setBlockLoading(false)
+  }
+
+  async function removeBlockedDate(date: string) {
+    await fetch('/api/admin/blocked-dates', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date }),
+    })
+    toast.success('ลบวันหยุดแล้ว')
+    fetchData()
   }
 
   async function removePricing(userId: string) {
@@ -219,11 +250,12 @@ export default function AdminDashboard() {
         </div>
 
         {/* Tab switcher */}
-        <div className="grid grid-cols-3 gap-1 rounded-2xl p-1 border-2" style={{ background: 'white', borderColor: '#e8c4c4' }}>
+        <div className="grid grid-cols-4 gap-1 rounded-2xl p-1 border-2" style={{ background: 'white', borderColor: '#e8c4c4' }}>
           {([
             { key: 'orders', label: 'ออเดอร์', icon: <ClipboardList size={15} /> },
             { key: 'summary', label: 'สรุป', icon: <ChefHat size={15} /> },
             { key: 'customers', label: 'ลูกค้า', icon: <Users size={15} /> },
+            { key: 'calendar', label: 'วันหยุด', icon: <CalendarOff size={15} /> },
           ] as const).map(({ key, label, icon }) => (
             <button key={key} onClick={() => setTab(key)}
               className="flex items-center justify-center gap-1.5 rounded-xl py-2 font-bold text-xs transition-all"
@@ -677,6 +709,60 @@ export default function AdminDashboard() {
             })}
           </div>
         )}
+        {/* CALENDAR TAB */}
+        {tab === 'calendar' && (
+          <div className="space-y-4">
+            {/* Add new blocked date */}
+            <div className="rounded-2xl p-5 border-2" style={{ background: 'white', borderColor: '#e8c4c4' }}>
+              <h3 className="font-bold text-base mb-3 flex items-center gap-2" style={{ color: '#4a2728' }}>
+                <CalendarOff size={16} /> เพิ่มวันที่ไม่สะดวก
+              </h3>
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <input type="date" value={newBlock.date}
+                    onChange={e => setNewBlock(p => ({ ...p, date: e.target.value }))}
+                    className="flex-1 rounded-xl px-3 py-2.5 border-2 text-sm font-medium"
+                    style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
+                </div>
+                <input type="text" value={newBlock.note}
+                  onChange={e => setNewBlock(p => ({ ...p, note: e.target.value }))}
+                  placeholder="หมายเหตุ เช่น วันหยุดส่วนตัว (ไม่บังคับ)"
+                  className="w-full rounded-xl px-3 py-2.5 border-2 text-sm"
+                  style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
+                <button onClick={addBlockedDate} disabled={blockLoading || !newBlock.date}
+                  className="w-full rounded-xl py-2.5 text-sm font-bold disabled:opacity-50"
+                  style={{ background: '#4a2728', color: '#f2dada' }}>
+                  {blockLoading ? 'กำลังบันทึก...' : '+ เพิ่มวันหยุด'}
+                </button>
+              </div>
+            </div>
+
+            {/* List of blocked dates */}
+            <div className="rounded-2xl border-2 overflow-hidden" style={{ background: 'white', borderColor: '#e8c4c4' }}>
+              {blockedDates.length === 0 ? (
+                <p className="text-center py-8 text-sm" style={{ color: '#7a4a4b' }}>ยังไม่มีวันที่ปิดรับออเดอร์</p>
+              ) : (
+                blockedDates.map((b, i) => (
+                  <div key={b.date} className={`px-4 py-3 flex items-center justify-between gap-2 ${i > 0 ? 'border-t' : ''}`}
+                    style={{ borderColor: '#e8c4c4' }}>
+                    <div>
+                      <p className="text-sm font-bold" style={{ color: '#4a2728' }}>
+                        {new Date(b.date + 'T00:00:00').toLocaleDateString('th-TH', { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' })}
+                      </p>
+                      {b.note && <p className="text-xs mt-0.5" style={{ color: '#7a4a4b' }}>{b.note}</p>}
+                    </div>
+                    <button onClick={() => removeBlockedDate(b.date)}
+                      className="p-1.5 rounded-lg transition-colors"
+                      style={{ color: '#c0392b' }}>
+                      <X size={18} />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
       </div>
     </main>
   )
