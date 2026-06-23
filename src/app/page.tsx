@@ -30,7 +30,7 @@ export default function OrderPage() {
   const [noPepper, setNoPepper] = useState(false)
   const [sesameOil, setSesameOil] = useState(false)
   const [mapCoords, setMapCoords] = useState({ lat: 13.7563, lng: 100.5018 })
-  const [blockedRanges, setBlockedRanges] = useState<{ start_date: string; end_date: string }[]>([])
+  const [blockedRanges, setBlockedRanges] = useState<{ start_date: string; end_date: string; note: string | null }[]>([])
   const [form, setForm] = useState({
     customer_name: '',
     phone: '',
@@ -256,6 +256,23 @@ export default function OrderPage() {
 
           <div className="rounded-2xl p-5 border-2" style={{ background: 'white', borderColor: '#e8c4c4' }}>
             <h3 className="font-bold text-lg mb-3" style={{ color: '#4a2728' }}>วันที่รับสินค้า</h3>
+
+            {blockedRanges.length > 0 && (
+              <div className="mb-3 rounded-xl p-3 space-y-1.5" style={{ background: '#fff3cd', border: '1.5px solid #f0c040' }}>
+                <p className="text-xs font-bold" style={{ color: '#7a4a0a' }}>⚠️ วันที่ไม่สะดวกรับออเดอร์</p>
+                {blockedRanges.map((r, i) => {
+                  const fmt = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })
+                  const label = r.start_date === r.end_date ? fmt(r.start_date) : `${fmt(r.start_date)} – ${fmt(r.end_date)}`
+                  return (
+                    <div key={i} className="text-xs" style={{ color: '#7a4a0a' }}>
+                      <span className="font-semibold">{label}</span>
+                      {r.note && <span className="ml-1 opacity-80">— {r.note}</span>}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
             <input type="date" value={form.pickup_date}
               onChange={e => {
                 const val = e.target.value

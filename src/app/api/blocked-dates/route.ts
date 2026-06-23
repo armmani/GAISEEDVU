@@ -9,7 +9,7 @@ const supabaseAdmin = createClient(
 export async function GET() {
   const { data } = await supabaseAdmin
     .from('blocked_dates')
-    .select('start_date, end_date')
+    .select('start_date, end_date, note')
     .order('start_date', { ascending: true })
   return NextResponse.json(data ?? [])
 }
