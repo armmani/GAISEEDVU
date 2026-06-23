@@ -3,6 +3,13 @@ export type PickupLocation = 'donmueang' | 'siam' | 'chula'
 export type OrderStatus = 'pending' | 'confirmed' | 'ready' | 'completed' | 'cancelled'
 export type SaltLevel = 'less' | 'normal' | 'more'
 
+export interface OrderItem {
+  quantity: number
+  salt_level: SaltLevel
+  no_pepper: boolean
+  sesame_oil: boolean
+}
+
 export interface Order {
   id: string
   customer_name: string
@@ -21,6 +28,7 @@ export interface Order {
   sesame_oil: boolean
   user_id: string | null
   created_at: string
+  items: OrderItem[] | null
 }
 
 export const SALT_LEVEL_LABEL: Record<SaltLevel, string> = {
@@ -44,3 +52,21 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
 }
 
 export const PRICE_PER_PIECE = 65
+
+export function getOrderItems(order: Order): OrderItem[] {
+  if (order.items && order.items.length > 0) return order.items
+  return [{
+    quantity: order.quantity,
+    salt_level: order.salt_level ?? 'normal',
+    no_pepper: order.no_pepper ?? false,
+    sesame_oil: order.sesame_oil ?? false,
+  }]
+}
+
+export function itemLabel(item: OrderItem): string {
+  return [
+    SALT_LEVEL_LABEL[item.salt_level],
+    item.no_pepper ? 'ไม่ใส่พริกไท' : null,
+    item.sesame_oil ? 'ใส่น้ำมันงา' : null,
+  ].filter(Boolean).join(' · ')
+}

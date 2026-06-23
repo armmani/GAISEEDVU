@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { MapPin, Truck, ExternalLink, RefreshCw, ToggleLeft, ToggleRight, LogOut, Users, ClipboardList, Tag, X, ChefHat, CalendarOff } from 'lucide-react'
-import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, SALT_LEVEL_LABEL, PRICE_PER_PIECE, type Order, type OrderStatus } from '@/lib/types'
+import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, SALT_LEVEL_LABEL, PRICE_PER_PIECE, getOrderItems, itemLabel, type Order, type OrderStatus } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 
 const STATUS_COLORS: Record<OrderStatus, { bg: string; text: string }> = {
@@ -321,11 +321,7 @@ export default function AdminDashboard() {
             function OrderCard({ order }: { order: Order }) {
               const colors = STATUS_COLORS[order.status]
               const nextStatus = STATUS_FLOW[STATUS_FLOW.indexOf(order.status) + 1]
-              const seasoning = [
-                order.salt_level ? SALT_LEVEL_LABEL[order.salt_level] : 'เค็มปกติ',
-                order.no_pepper ? 'ไม่ใส่พริกไท' : null,
-                order.sesame_oil ? 'ใส่น้ำมันงา' : null,
-              ].filter(Boolean).join(' · ')
+              const orderItems = getOrderItems(order)
 
               return (
                 <div className="rounded-2xl border-2 overflow-hidden" style={{ background: 'white', borderColor: colors.bg === '#e2e3e5' ? '#e8c4c4' : colors.bg }}>
@@ -366,8 +362,16 @@ export default function AdminDashboard() {
                       </span>
                     </div>
 
+                    <div className="space-y-0.5">
+                      {orderItems.map((it, i) => (
+                        <div key={i} className="flex justify-between">
+                          <span style={{ color: '#7a4a4b' }}>🧂 {itemLabel(it)}</span>
+                          {orderItems.length > 1 && <span className="font-semibold" style={{ color: '#4a2728' }}>×{it.quantity}</span>}
+                        </div>
+                      ))}
+                    </div>
                     <div className="flex items-center justify-between">
-                      <span style={{ color: '#7a4a4b' }}>🧂 {seasoning}</span>
+                      <span />
                       <a href={`tel:${order.phone}`} className="font-bold underline" style={{ color: '#4a2728' }}>
                         {order.phone}
                       </a>
@@ -470,16 +474,14 @@ export default function AdminDashboard() {
                 const dayOrders = byDate.get(date)!
                 const totalPieces = dayOrders.reduce((s, o) => s + o.quantity, 0)
 
-                // Build combinations
+                // Build combinations (supports multi-item orders)
                 const combos = new Map<string, { label: string; count: number }>()
                 for (const o of dayOrders) {
-                  const salt = SALT_LEVEL_LABEL[o.salt_level ?? 'normal']
-                  const parts = [salt]
-                  if (o.no_pepper) parts.push('ไม่ใส่พริกไท')
-                  if (o.sesame_oil) parts.push('ใส่น้ำมันงา')
-                  const key = parts.join('|')
-                  if (!combos.has(key)) combos.set(key, { label: parts.join(' · '), count: 0 })
-                  combos.get(key)!.count += o.quantity
+                  for (const it of getOrderItems(o)) {
+                    const label = itemLabel(it)
+                    if (!combos.has(label)) combos.set(label, { label, count: 0 })
+                    combos.get(label)!.count += it.quantity
+                  }
                 }
 
                 // By location
@@ -539,12 +541,16 @@ export default function AdminDashboard() {
                         <p className="text-xs font-bold mb-2" style={{ color: '#7a4a4b' }}>รายการ</p>
                         <div className="space-y-1">
                           {dayOrders.map(o => (
-                            <div key={o.id} className="flex items-center gap-2 text-xs" style={{ color: '#4a2728' }}>
-                              <span className="font-black">×{o.quantity}</span>
-                              <span className="font-semibold truncate flex-1">{o.customer_name}</span>
-                              <span style={{ color: '#7a4a4b' }}>
-                                {[SALT_LEVEL_LABEL[o.salt_level ?? 'normal'], o.no_pepper ? 'ไม่พริก' : null, o.sesame_oil ? 'งา' : null].filter(Boolean).join(' ')}
-                              </span>
+                            <div key={o.id} className="text-xs" style={{ color: '#4a2728' }}>
+                              <div className="flex items-center gap-2">
+                                <span className="font-black">×{o.quantity}</span>
+                                <span className="font-semibold truncate flex-1">{o.customer_name}</span>
+                              </div>
+                              {getOrderItems(o).map((it, ii) => (
+                                <p key={ii} className="ml-5" style={{ color: '#7a4a4b' }}>
+                                  ×{it.quantity} {itemLabel(it)}
+                                </p>
+                              ))}
                             </div>
                           ))}
                         </div>
@@ -688,11 +694,7 @@ export default function AdminDashboard() {
                       {/* Order history */}
                       {c.orders.map((order, i) => {
                         const colors = STATUS_COLORS[order.status]
-                        const seasoning = [
-                          order.salt_level ? SALT_LEVEL_LABEL[order.salt_level] : 'เค็มปกติ',
-                          order.no_pepper ? 'ไม่ใส่พริกไท' : null,
-                          order.sesame_oil ? 'ใส่น้ำมันงา' : null,
-                        ].filter(Boolean).join(' · ')
+                        const oi = getOrderItems(order)
                         return (
                           <div key={order.id} className={i > 0 ? 'border-t' : ''} style={{ borderColor: '#f0dada' }}>
                             <div className="px-4 py-3 flex items-center justify-between gap-2">
@@ -707,10 +709,14 @@ export default function AdminDashboard() {
                                   </span>
                                 </div>
                                 <p className="text-xs mt-0.5" style={{ color: '#7a4a4b' }}>
-                                  {new Date(order.pickup_date).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' })}
+                                  {new Date(order.pickup_date + 'T00:00:00').toLocaleDateString('th-TH', { month: 'short', day: 'numeric' })}
                                   {' · '}{order.delivery_type === 'grab' ? 'Grab' : 'นัดรับ'}
-                                  {' · '}{seasoning}
                                 </p>
+                                {oi.map((it, ii) => (
+                                  <p key={ii} className="text-xs" style={{ color: '#7a4a4b' }}>
+                                    ×{it.quantity} {itemLabel(it)}
+                                  </p>
+                                ))}
                               </div>
                               <div className="text-right shrink-0">
                                 <p className="text-sm font-black" style={{ color: '#4a2728' }}>×{order.quantity}</p>

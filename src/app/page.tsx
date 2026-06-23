@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { ShoppingBag, MapPin, Truck, Minus, Plus } from 'lucide-react'
-import { PICKUP_LOCATIONS, SALT_LEVEL_LABEL, PRICE_PER_PIECE, type DeliveryType, type PickupLocation, type SaltLevel } from '@/lib/types'
+import { ShoppingBag, MapPin, Truck, Minus, Plus, X } from 'lucide-react'
+import { PICKUP_LOCATIONS, SALT_LEVEL_LABEL, PRICE_PER_PIECE, getOrderItems, type DeliveryType, type PickupLocation, type SaltLevel, type OrderItem } from '@/lib/types'
 import BottomNav from '@/components/BottomNav'
 import dynamic from 'next/dynamic'
 
@@ -19,54 +19,132 @@ function getMinDate() {
   return `${y}-${m}-${day}`
 }
 
+const defaultItem = (): OrderItem => ({ quantity: 1, salt_level: 'normal', no_pepper: false, sesame_oil: false })
+
+function ItemCard({ item, idx, total, onChange, onRemove }: {
+  item: OrderItem; idx: number; total: number
+  onChange: (patch: Partial<OrderItem>) => void
+  onRemove: () => void
+}) {
+  return (
+    <div className="rounded-xl border-2 p-4 space-y-3" style={{ borderColor: '#e8c4c4', background: '#fffcfc' }}>
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-bold" style={{ color: '#4a2728' }}>สูตรที่ {idx + 1}</span>
+        {total > 1 && (
+          <button type="button" onClick={onRemove}
+            className="p-1 rounded-lg" style={{ color: '#b89a9b' }}>
+            <X size={16} />
+          </button>
+        )}
+      </div>
+
+      {/* Quantity */}
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-semibold" style={{ color: '#7a4a4b' }}>จำนวน</span>
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={() => onChange({ quantity: Math.max(1, item.quantity - 1) })}
+            disabled={item.quantity <= 1}
+            className="w-8 h-8 rounded-full flex items-center justify-center disabled:opacity-40"
+            style={{ background: '#4a2728', color: '#f2dada' }}>
+            <Minus size={14} />
+          </button>
+          <span className="text-xl font-black w-7 text-center" style={{ color: '#4a2728' }}>{item.quantity}</span>
+          <button type="button" onClick={() => onChange({ quantity: item.quantity + 1 })}
+            className="w-8 h-8 rounded-full flex items-center justify-center"
+            style={{ background: '#4a2728', color: '#f2dada' }}>
+            <Plus size={14} />
+          </button>
+        </div>
+      </div>
+
+      {/* Salt level */}
+      <div>
+        <p className="text-xs font-semibold mb-1.5" style={{ color: '#7a4a4b' }}>ความเค็ม</p>
+        <div className="grid grid-cols-3 gap-1.5">
+          {(Object.entries(SALT_LEVEL_LABEL) as [SaltLevel, string][]).map(([key, label]) => (
+            <button key={key} type="button" onClick={() => onChange({ salt_level: key })}
+              className="rounded-lg py-2 text-xs font-bold border-2 transition-all"
+              style={{
+                borderColor: item.salt_level === key ? '#4a2728' : '#e8c4c4',
+                background: item.salt_level === key ? '#4a2728' : 'white',
+                color: item.salt_level === key ? '#f2dada' : '#4a2728',
+              }}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Checkboxes */}
+      <div className="flex gap-2">
+        {[
+          { key: 'no_pepper' as const, label: 'ไม่ใส่พริกไท' },
+          { key: 'sesame_oil' as const, label: 'ใส่น้ำมันงา' },
+        ].map(({ key, label }) => (
+          <button key={key} type="button" onClick={() => onChange({ [key]: !item[key] })}
+            className="flex-1 flex items-center gap-2 rounded-lg px-3 py-2 border-2 text-left transition-all"
+            style={{ borderColor: item[key] ? '#4a2728' : '#e8c4c4', background: item[key] ? '#f2dada' : 'white' }}>
+            <div className="w-4 h-4 rounded border-2 flex items-center justify-center shrink-0"
+              style={{ borderColor: '#4a2728', background: item[key] ? '#4a2728' : 'white' }}>
+              {item[key] && <svg viewBox="0 0 12 12" className="w-2.5 h-2.5" fill="none">
+                <path d="M2 6l3 3 5-5" stroke="#f2dada" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>}
+            </div>
+            <span className="text-xs font-semibold" style={{ color: '#4a2728' }}>{label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function OrderPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [quantity, setQuantity] = useState(1)
   const [pricePerPiece, setPricePerPiece] = useState(PRICE_PER_PIECE)
   const [deliveryType, setDeliveryType] = useState<DeliveryType>('pickup')
   const [pickupLocation, setPickupLocation] = useState<PickupLocation>('donmueang')
-  const [saltLevel, setSaltLevel] = useState<SaltLevel>('normal')
-  const [noPepper, setNoPepper] = useState(false)
-  const [sesameOil, setSesameOil] = useState(false)
   const [mapCoords, setMapCoords] = useState({ lat: 13.7563, lng: 100.5018 })
   const [blockedRanges, setBlockedRanges] = useState<{ start_date: string; end_date: string; note: string | null }[]>([])
-  const [form, setForm] = useState({
-    customer_name: '',
-    phone: '',
-    delivery_address: '',
-    pickup_date: '',
-    note: '',
-  })
+  const [items, setItems] = useState<OrderItem[]>([defaultItem()])
+  const [form, setForm] = useState({ customer_name: '', phone: '', delivery_address: '', pickup_date: '', note: '' })
 
-  const total = quantity * pricePerPiece
+  const totalQty = items.reduce((s, i) => s + i.quantity, 0)
+  const total = totalQty * pricePerPiece
 
   useEffect(() => {
-    fetch('/api/account/pricing')
-      .then(r => r.json())
-      .then(d => { if (d.price_per_piece) setPricePerPiece(d.price_per_piece) })
-      .catch(() => {})
-    fetch('/api/account/profile')
-      .then(r => r.json())
-      .then(profile => {
-        if (profile) {
+    fetch('/api/account/pricing').then(r => r.json()).then(d => { if (d.price_per_piece) setPricePerPiece(d.price_per_piece) }).catch(() => {})
+    fetch('/api/account/profile').then(r => r.json()).then(profile => {
+      if (profile) setForm(prev => ({ ...prev, customer_name: profile.display_name || '', phone: profile.phone || '', delivery_address: profile.default_address || '' }))
+    }).catch(() => {})
+    fetch('/api/blocked-dates').then(r => r.json()).then(d => { if (Array.isArray(d)) setBlockedRanges(d) }).catch(() => {})
+
+    // Reorder prefill
+    const reorderId = new URLSearchParams(window.location.search).get('reorder')
+    if (reorderId) {
+      fetch(`/api/account/orders/${reorderId}`).then(r => r.json()).then(order => {
+        if (order && !order.error) {
           setForm(prev => ({
             ...prev,
-            customer_name: profile.display_name || '',
-            phone: profile.phone || '',
-            delivery_address: profile.default_address || '',
+            customer_name: order.customer_name || prev.customer_name,
+            phone: order.phone || prev.phone,
+            delivery_address: order.delivery_address || '',
+            note: order.note || '',
+            pickup_date: '',
           }))
+          setDeliveryType(order.delivery_type)
+          if (order.pickup_location) setPickupLocation(order.pickup_location)
+          setItems(getOrderItems(order))
         }
-      })
-      .catch(() => {})
-    fetch('/api/blocked-dates')
-      .then(r => r.json())
-      .then(d => { if (Array.isArray(d)) setBlockedRanges(d) })
-      .catch(() => {})
+      }).catch(() => {})
+    }
   }, [])
 
-  function set(field: string, value: string) {
+  function setField(field: string, value: string) {
     setForm(prev => ({ ...prev, [field]: value }))
+  }
+  function updateItem(idx: number, patch: Partial<OrderItem>) {
+    setItems(prev => prev.map((it, i) => i === idx ? { ...it, ...patch } : it))
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -81,16 +159,7 @@ export default function OrderPage() {
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...form,
-          quantity,
-          total_amount: total,
-          delivery_type: deliveryType,
-          pickup_location: deliveryType === 'pickup' ? pickupLocation : null,
-          salt_level: saltLevel,
-          no_pepper: noPepper,
-          sesame_oil: sesameOil,
-        }),
+        body: JSON.stringify({ ...form, items, delivery_type: deliveryType, pickup_location: deliveryType === 'pickup' ? pickupLocation : null }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'เกิดข้อผิดพลาด')
@@ -128,14 +197,14 @@ export default function OrderPage() {
           </div>
         </div>
 
-        {/* Product Card */}
+        {/* Product info */}
         <div className="rounded-2xl p-5 mb-4 border-2" style={{ background: 'white', borderColor: '#e8c4c4' }}>
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-xl font-bold" style={{ color: '#4a2728' }}>Original เกลือพริกไท</h2>
               <p className="text-sm mt-1" style={{ color: '#7a4a4b' }}>ไก่ซูวีด 200–300 กรัม/ชิ้น</p>
               {pricePerPiece !== PRICE_PER_PIECE ? (
-                <div className="mt-2 flex items-center gap-2">
+                <div className="mt-2 flex items-center gap-2 flex-wrap">
                   <p className="text-sm line-through" style={{ color: '#b09090' }}>ชิ้นละ {PRICE_PER_PIECE} บาท</p>
                   <p className="text-2xl font-black" style={{ color: '#c0392b' }}>ชิ้นละ {pricePerPiece} บาท</p>
                   <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: '#ffd6d6', color: '#c0392b' }}>ราคาพิเศษ</span>
@@ -144,108 +213,71 @@ export default function OrderPage() {
                 <p className="text-2xl font-black mt-2" style={{ color: '#4a2728' }}>ชิ้นละ {PRICE_PER_PIECE} บาท</p>
               )}
             </div>
-            <div className="rounded-xl px-3 py-1 text-xs font-bold shrink-0" style={{ background: '#f2dada', color: '#4a2728' }}>
-              Pre-order
-            </div>
+            <div className="rounded-xl px-3 py-1 text-xs font-bold shrink-0" style={{ background: '#f2dada', color: '#4a2728' }}>Pre-order</div>
           </div>
-
-          <div className="flex items-center justify-between mt-4">
-            <span className="font-semibold" style={{ color: '#4a2728' }}>จำนวน</span>
-            <div className="flex items-center gap-3">
-              <button type="button" onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                className="w-9 h-9 rounded-full flex items-center justify-center disabled:opacity-40"
-                style={{ background: '#4a2728', color: '#f2dada' }} disabled={quantity <= 1}>
-                <Minus size={16} />
-              </button>
-              <span className="text-2xl font-black w-8 text-center" style={{ color: '#4a2728' }}>{quantity}</span>
-              <button type="button" onClick={() => setQuantity(q => q + 1)}
-                className="w-9 h-9 rounded-full flex items-center justify-center"
-                style={{ background: '#4a2728', color: '#f2dada' }}>
-                <Plus size={16} />
-              </button>
+          <div className="mt-4 pt-3 border-t flex justify-between items-center" style={{ borderColor: '#e8c4c4' }}>
+            <span className="font-semibold" style={{ color: '#4a2728' }}>รวมทั้งหมด</span>
+            <div className="text-right">
+              <span className="text-2xl font-black" style={{ color: '#4a2728' }}>{total.toLocaleString()} บาท</span>
+              <span className="ml-2 text-sm font-semibold" style={{ color: '#7a4a4b' }}>({totalQty} ชิ้น)</span>
             </div>
-          </div>
-
-          <div className="mt-3 pt-3 border-t flex justify-between items-center" style={{ borderColor: '#e8c4c4' }}>
-            <span className="font-semibold" style={{ color: '#4a2728' }}>รวม</span>
-            <span className="text-2xl font-black" style={{ color: '#4a2728' }}>{total.toLocaleString()} บาท</span>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Customer info */}
           <div className="rounded-2xl p-5 border-2 space-y-4" style={{ background: 'white', borderColor: '#e8c4c4' }}>
             <h3 className="font-bold text-lg" style={{ color: '#4a2728' }}>ข้อมูลผู้สั่ง</h3>
             <div>
               <label className="block text-sm font-semibold mb-1" style={{ color: '#7a4a4b' }}>ชื่อ *</label>
-              <input type="text" value={form.customer_name} onChange={e => set('customer_name', e.target.value)}
-                placeholder="ชื่อ-นามสกุล"
-                className="w-full rounded-xl px-4 py-3 border-2 text-sm font-medium"
+              <input type="text" value={form.customer_name} onChange={e => setField('customer_name', e.target.value)}
+                placeholder="ชื่อ-นามสกุล" className="w-full rounded-xl px-4 py-3 border-2 text-sm font-medium"
                 style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
             </div>
             <div>
               <label className="block text-sm font-semibold mb-1" style={{ color: '#7a4a4b' }}>เบอร์โทร *</label>
-              <input type="tel" value={form.phone} onChange={e => set('phone', e.target.value)}
-                placeholder="08X-XXX-XXXX"
-                className="w-full rounded-xl px-4 py-3 border-2 text-sm font-medium"
+              <input type="tel" value={form.phone} onChange={e => setField('phone', e.target.value)}
+                placeholder="08X-XXX-XXXX" className="w-full rounded-xl px-4 py-3 border-2 text-sm font-medium"
                 style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
             </div>
           </div>
 
+          {/* Delivery */}
           <div className="rounded-2xl p-5 border-2 space-y-4" style={{ background: 'white', borderColor: '#e8c4c4' }}>
             <h3 className="font-bold text-lg" style={{ color: '#4a2728' }}>วิธีรับสินค้า</h3>
             <div className="grid grid-cols-2 gap-3">
               {(['pickup', 'grab'] as DeliveryType[]).map(type => (
                 <button key={type} type="button" onClick={() => setDeliveryType(type)}
                   className="rounded-xl p-3 border-2 text-center transition-all"
-                  style={{
-                    borderColor: deliveryType === type ? '#4a2728' : '#e8c4c4',
-                    background: deliveryType === type ? '#4a2728' : 'white',
-                    color: deliveryType === type ? '#f2dada' : '#4a2728',
-                  }}>
+                  style={{ borderColor: deliveryType === type ? '#4a2728' : '#e8c4c4', background: deliveryType === type ? '#4a2728' : 'white', color: deliveryType === type ? '#f2dada' : '#4a2728' }}>
                   {type === 'pickup' ? <MapPin size={20} className="mx-auto mb-1" /> : <Truck size={20} className="mx-auto mb-1" />}
                   <div className="text-sm font-bold">{type === 'pickup' ? 'นัดรับ' : 'Grab (กทม.)'}</div>
                 </button>
               ))}
             </div>
-
             {deliveryType === 'pickup' && (
               <div className="space-y-2">
                 {(Object.entries(PICKUP_LOCATIONS) as [PickupLocation, string][]).map(([key, label]) => (
                   <button key={key} type="button" onClick={() => setPickupLocation(key)}
                     className="w-full rounded-xl px-4 py-3 border-2 text-left text-sm font-medium transition-all"
-                    style={{
-                      borderColor: pickupLocation === key ? '#4a2728' : '#e8c4c4',
-                      background: pickupLocation === key ? '#f2dada' : 'white',
-                      color: '#4a2728',
-                    }}>
+                    style={{ borderColor: pickupLocation === key ? '#4a2728' : '#e8c4c4', background: pickupLocation === key ? '#f2dada' : 'white', color: '#4a2728' }}>
                     {label}
                   </button>
                 ))}
               </div>
             )}
-
             {deliveryType === 'grab' && (
               <div className="space-y-3">
                 <div>
                   <label className="block text-sm font-semibold mb-2" style={{ color: '#7a4a4b' }}>
                     ปักหมุดตำแหน่งจัดส่ง * <span className="font-normal">(เฉพาะ กทม.)</span>
                   </label>
-                  <MapPicker
-                    lat={mapCoords.lat}
-                    lng={mapCoords.lng}
-                    onMove={(lat, lng, address) => {
-                      setMapCoords({ lat, lng })
-                      set('delivery_address', address)
-                    }}
-                  />
+                  <MapPicker lat={mapCoords.lat} lng={mapCoords.lng} onMove={(lat, lng, address) => { setMapCoords({ lat, lng }); setField('delivery_address', address) }} />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold mb-1" style={{ color: '#7a4a4b' }}>
-                    ที่อยู่ (แก้ไขได้)
-                  </label>
-                  <textarea value={form.delivery_address} onChange={e => set('delivery_address', e.target.value)}
-                    placeholder="ที่อยู่จะขึ้นอัตโนมัติหลังปักหมุด หรือพิมพ์เองได้เลย"
-                    rows={2}
+                  <label className="block text-sm font-semibold mb-1" style={{ color: '#7a4a4b' }}>ที่อยู่ (แก้ไขได้)</label>
+                  <textarea value={form.delivery_address} onChange={e => setField('delivery_address', e.target.value)}
+                    placeholder="ที่อยู่จะขึ้นอัตโนมัติหลังปักหมุด หรือพิมพ์เองได้เลย" rows={2}
                     className="w-full rounded-xl px-4 py-3 border-2 text-sm font-medium resize-none"
                     style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
                 </div>
@@ -254,9 +286,9 @@ export default function OrderPage() {
             )}
           </div>
 
+          {/* Date */}
           <div className="rounded-2xl p-5 border-2" style={{ background: 'white', borderColor: '#e8c4c4' }}>
             <h3 className="font-bold text-lg mb-3" style={{ color: '#4a2728' }}>วันที่รับสินค้า</h3>
-
             {blockedRanges.length > 0 && (
               <div className="mb-3 rounded-xl p-3 space-y-1.5" style={{ background: '#fff3cd', border: '1.5px solid #f0c040' }}>
                 <p className="text-xs font-bold" style={{ color: '#7a4a0a' }}>⚠️ วันที่ไม่สะดวกรับออเดอร์</p>
@@ -272,16 +304,14 @@ export default function OrderPage() {
                 })}
               </div>
             )}
-
             <input type="date" value={form.pickup_date}
               onChange={e => {
                 const val = e.target.value
-                const isBlocked = blockedRanges.some(r => val >= r.start_date && val <= r.end_date)
-                if (isBlocked) {
+                if (blockedRanges.some(r => val >= r.start_date && val <= r.end_date)) {
                   toast.error('วันที่เลือกไม่สะดวกรับออเดอร์ กรุณาเลือกวันอื่น')
-                  set('pickup_date', '')
+                  setField('pickup_date', '')
                 } else {
-                  set('pickup_date', val)
+                  setField('pickup_date', val)
                 }
               }}
               min={getMinDate()}
@@ -290,51 +320,25 @@ export default function OrderPage() {
             <p className="text-xs mt-2" style={{ color: '#7a4a4b' }}>สั่งล่วงหน้าอย่างน้อย 1 วัน</p>
           </div>
 
-          <div className="rounded-2xl p-5 border-2 space-y-4" style={{ background: 'white', borderColor: '#e8c4c4' }}>
-            <h3 className="font-bold text-lg" style={{ color: '#4a2728' }}>ปรุงตามใจ</h3>
-            <div>
-              <p className="text-sm font-semibold mb-2" style={{ color: '#7a4a4b' }}>ความเค็ม</p>
-              <div className="grid grid-cols-3 gap-2">
-                {(Object.entries(SALT_LEVEL_LABEL) as [SaltLevel, string][]).map(([key, label]) => (
-                  <button key={key} type="button" onClick={() => setSaltLevel(key)}
-                    className="rounded-xl py-2.5 text-sm font-bold border-2 transition-all"
-                    style={{
-                      borderColor: saltLevel === key ? '#4a2728' : '#e8c4c4',
-                      background: saltLevel === key ? '#4a2728' : 'white',
-                      color: saltLevel === key ? '#f2dada' : '#4a2728',
-                    }}>
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="space-y-3">
-              <p className="text-sm font-semibold" style={{ color: '#7a4a4b' }}>ตัวเลือกเพิ่มเติม</p>
-              {[
-                { value: noPepper, set: setNoPepper, label: 'ไม่ใส่พริกไท' },
-                { value: sesameOil, set: setSesameOil, label: 'ใส่น้ำมันงา' },
-              ].map(({ value, set: setter, label }) => (
-                <button key={label} type="button" onClick={() => setter(!value)}
-                  className="w-full flex items-center gap-3 rounded-xl px-4 py-3 border-2 text-left transition-all"
-                  style={{
-                    borderColor: value ? '#4a2728' : '#e8c4c4',
-                    background: value ? '#f2dada' : 'white',
-                  }}>
-                  <div className="w-5 h-5 rounded border-2 flex items-center justify-center shrink-0"
-                    style={{ borderColor: '#4a2728', background: value ? '#4a2728' : 'white' }}>
-                    {value && <svg viewBox="0 0 12 12" className="w-3 h-3" fill="none">
-                      <path d="M2 6l3 3 5-5" stroke="#f2dada" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>}
-                  </div>
-                  <span className="text-sm font-semibold" style={{ color: '#4a2728' }}>{label}</span>
-                </button>
-              ))}
-            </div>
+          {/* Items */}
+          <div className="rounded-2xl p-5 border-2 space-y-3" style={{ background: 'white', borderColor: '#e8c4c4' }}>
+            <h3 className="font-bold text-lg" style={{ color: '#4a2728' }}>สูตรและจำนวน</h3>
+            {items.map((item, idx) => (
+              <ItemCard key={idx} item={item} idx={idx} total={items.length}
+                onChange={patch => updateItem(idx, patch)}
+                onRemove={() => setItems(prev => prev.filter((_, i) => i !== idx))} />
+            ))}
+            <button type="button" onClick={() => setItems(prev => [...prev, defaultItem()])}
+              className="w-full rounded-xl py-2.5 text-sm font-bold border-2 border-dashed transition-all"
+              style={{ borderColor: '#e8c4c4', color: '#7a4a4b' }}>
+              + เพิ่มสูตร
+            </button>
           </div>
 
+          {/* Note */}
           <div className="rounded-2xl p-5 border-2" style={{ background: 'white', borderColor: '#e8c4c4' }}>
             <h3 className="font-bold text-lg mb-3" style={{ color: '#4a2728' }}>หมายเหตุ (ถ้ามี)</h3>
-            <textarea value={form.note} onChange={e => set('note', e.target.value)}
+            <textarea value={form.note} onChange={e => setField('note', e.target.value)}
               placeholder="แจ้งเพิ่มเติมได้เลย..." rows={2}
               className="w-full rounded-xl px-4 py-3 border-2 text-sm font-medium resize-none"
               style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
@@ -346,7 +350,6 @@ export default function OrderPage() {
             <ShoppingBag size={22} />
             {loading ? 'กำลังส่งออเดอร์...' : `สั่งเลย — ${total.toLocaleString()} บาท`}
           </button>
-
           <p className="text-center text-xs pb-2" style={{ color: '#7a4a4b' }}>
             หลังสั่งแล้วจะต้องโอนเงิน + แนบสลิปเพื่อยืนยันออเดอร์
           </p>
