@@ -81,7 +81,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       pickup_location: pickup_location || null,
       delivery_address: delivery_address?.trim() || null,
       note: note?.trim() || null,
-      salt_level: first.salt_level,
+      salt_level: null,
       no_pepper: !!first.no_pepper,
       sesame_oil: !!first.sesame_oil,
       payment_slip_url: null, // clear slip since amount may change

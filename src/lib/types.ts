@@ -5,7 +5,6 @@ export type SaltLevel = 'less' | 'normal' | 'more'
 
 export interface OrderItem {
   quantity: number
-  salt_level: SaltLevel
   no_pepper: boolean
   sesame_oil: boolean
 }
@@ -57,16 +56,15 @@ export function getOrderItems(order: Order): OrderItem[] {
   if (order.items && order.items.length > 0) return order.items
   return [{
     quantity: order.quantity,
-    salt_level: order.salt_level ?? 'normal',
     no_pepper: order.no_pepper ?? false,
     sesame_oil: order.sesame_oil ?? false,
   }]
 }
 
 export function itemLabel(item: OrderItem): string {
-  return [
-    SALT_LEVEL_LABEL[item.salt_level],
+  const parts = [
     item.no_pepper ? 'ไม่ใส่พริกไท' : null,
-    item.sesame_oil ? 'ใส่น้ำมันงา' : null,
-  ].filter(Boolean).join(' · ')
+    item.sesame_oil ? 'เพิ่มน้ำมันงา' : null,
+  ].filter(Boolean)
+  return parts.length > 0 ? parts.join(' · ') : 'สูตรปกติ'
 }

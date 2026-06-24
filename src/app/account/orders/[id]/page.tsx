@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, MapPin, Truck, ExternalLink, Pencil, X, Minus, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, SALT_LEVEL_LABEL, getOrderItems, itemLabel, type Order, type OrderStatus, type OrderItem, type SaltLevel, type DeliveryType, type PickupLocation } from '@/lib/types'
+import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, getOrderItems, itemLabel, type Order, type OrderStatus, type OrderItem, type DeliveryType, type PickupLocation } from '@/lib/types'
 import ChickenLoader from '@/components/ChickenLoader'
 import dynamic from 'next/dynamic'
 
@@ -26,7 +26,7 @@ function getMinDate() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-const defaultItem = (): OrderItem => ({ quantity: 1, salt_level: 'normal', no_pepper: false, sesame_oil: false })
+const defaultItem = (): OrderItem => ({ quantity: 1, no_pepper: false, sesame_oil: false })
 
 function ItemEditor({ item, idx, total, onChange, onRemove }: {
   item: OrderItem; idx: number; total: number
@@ -50,17 +50,8 @@ function ItemEditor({ item, idx, total, onChange, onRemove }: {
             style={{ background: '#4a2728', color: '#f2dada' }}><Plus size={12} /></button>
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-1">
-        {(Object.entries(SALT_LEVEL_LABEL) as [SaltLevel, string][]).map(([key, label]) => (
-          <button key={key} type="button" onClick={() => onChange({ salt_level: key })}
-            className="rounded-lg py-1.5 text-xs font-bold border-2 transition-all"
-            style={{ borderColor: item.salt_level === key ? '#4a2728' : '#e8c4c4', background: item.salt_level === key ? '#4a2728' : 'white', color: item.salt_level === key ? '#f2dada' : '#4a2728' }}>
-            {label}
-          </button>
-        ))}
-      </div>
       <div className="flex gap-1.5">
-        {([['no_pepper', 'ไม่ใส่พริกไท'], ['sesame_oil', 'ใส่น้ำมันงา']] as [keyof OrderItem, string][]).map(([key, label]) => (
+        {([['no_pepper', 'ไม่ใส่พริกไท'], ['sesame_oil', 'เพิ่มน้ำมันงา']] as [keyof OrderItem, string][]).map(([key, label]) => (
           <button key={key} type="button" onClick={() => onChange({ [key]: !item[key] })}
             className="flex-1 flex items-center gap-1.5 rounded-lg px-2 py-1.5 border-2 text-left transition-all"
             style={{ borderColor: item[key] ? '#4a2728' : '#e8c4c4', background: item[key] ? '#f2dada' : 'white' }}>

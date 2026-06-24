@@ -4,6 +4,7 @@ import { createClient as createServerClient } from '@/lib/supabase/server'
 import { sendTelegram } from '@/lib/telegram'
 import { PRICE_PER_PIECE, itemLabel, type OrderItem } from '@/lib/types'
 
+
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -56,7 +57,6 @@ export async function POST(req: NextRequest) {
 
     const totalQty = (items as OrderItem[]).reduce((s, i) => s + i.quantity, 0)
     const calculatedTotal = totalQty * pricePerPiece
-    // Normalise: use first item's fields for legacy columns
     const first = items[0] as OrderItem
 
     const { data, error } = await supabaseAdmin
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
         delivery_address: delivery_address?.trim() || null,
         pickup_date,
         note: note?.trim() || null,
-        salt_level: first.salt_level,
+        salt_level: null,
         no_pepper: !!first.no_pepper,
         sesame_oil: !!first.sesame_oil,
         items,

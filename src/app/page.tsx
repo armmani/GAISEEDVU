@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { ShoppingBag, MapPin, Truck, Minus, Plus, X } from 'lucide-react'
-import { PICKUP_LOCATIONS, SALT_LEVEL_LABEL, PRICE_PER_PIECE, getOrderItems, type DeliveryType, type PickupLocation, type SaltLevel, type OrderItem } from '@/lib/types'
+import { PICKUP_LOCATIONS, PRICE_PER_PIECE, getOrderItems, type DeliveryType, type PickupLocation, type OrderItem } from '@/lib/types'
 import BottomNav from '@/components/BottomNav'
 import dynamic from 'next/dynamic'
 
@@ -19,7 +19,7 @@ function getMinDate() {
   return `${y}-${m}-${day}`
 }
 
-const defaultItem = (): OrderItem => ({ quantity: 1, salt_level: 'normal', no_pepper: false, sesame_oil: false })
+const defaultItem = (): OrderItem => ({ quantity: 1, no_pepper: false, sesame_oil: false })
 
 function ItemCard({ item, idx, total, onChange, onRemove }: {
   item: OrderItem; idx: number; total: number
@@ -57,29 +57,11 @@ function ItemCard({ item, idx, total, onChange, onRemove }: {
         </div>
       </div>
 
-      {/* Salt level */}
-      <div>
-        <p className="text-xs font-semibold mb-1.5" style={{ color: '#7a4a4b' }}>ความเค็ม</p>
-        <div className="grid grid-cols-3 gap-1.5">
-          {(Object.entries(SALT_LEVEL_LABEL) as [SaltLevel, string][]).map(([key, label]) => (
-            <button key={key} type="button" onClick={() => onChange({ salt_level: key })}
-              className="rounded-lg py-2 text-xs font-bold border-2 transition-all"
-              style={{
-                borderColor: item.salt_level === key ? '#4a2728' : '#e8c4c4',
-                background: item.salt_level === key ? '#4a2728' : 'white',
-                color: item.salt_level === key ? '#f2dada' : '#4a2728',
-              }}>
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* Checkboxes */}
       <div className="flex gap-2">
         {[
           { key: 'no_pepper' as const, label: 'ไม่ใส่พริกไท' },
-          { key: 'sesame_oil' as const, label: 'ใส่น้ำมันงา' },
+          { key: 'sesame_oil' as const, label: 'เพิ่มน้ำมันงา' },
         ].map(({ key, label }) => (
           <button key={key} type="button" onClick={() => onChange({ [key]: !item[key] })}
             className="flex-1 flex items-center gap-2 rounded-lg px-3 py-2 border-2 text-left transition-all"
