@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
 
     const body = await req.json()
-    const { customer_name, phone, delivery_type, pickup_location, delivery_address, pickup_date, note, items } = body
+    const { customer_name, phone, delivery_type, pickup_location, delivery_address, pickup_date, pickup_time, recipient_name, recipient_phone, note, items } = body
 
     if (!customer_name || !phone || !pickup_date || !delivery_type) {
       return NextResponse.json({ error: 'ข้อมูลไม่ครบ' }, { status: 400 })
@@ -70,6 +70,9 @@ export async function POST(req: NextRequest) {
         pickup_location: pickup_location || null,
         delivery_address: delivery_address?.trim() || null,
         pickup_date,
+        pickup_time: pickup_time || null,
+        recipient_name: delivery_type === 'grab' ? (recipient_name?.trim() || null) : null,
+        recipient_phone: delivery_type === 'grab' ? (recipient_phone?.trim() || null) : null,
         note: note?.trim() || null,
         salt_level: null,
         no_pepper: !!first.no_pepper,
@@ -87,7 +90,10 @@ export async function POST(req: NextRequest) {
       const itemLines = (items as OrderItem[]).map((it, i) =>
         `  ${i + 1}. ×${it.quantity} ${itemLabel(it)}`
       ).join('\n')
-      const delivery = delivery_type === 'grab' ? `🚚 Grab: ${delivery_address || '-'}` : `📍 นัดรับ`
+      const timeStr = pickup_time ? ` (${pickup_time})` : ''
+      const delivery = delivery_type === 'grab'
+        ? `🚚 Grab: ${delivery_address || '-'}${timeStr}\n  ผู้รับ: ${recipient_name || '-'} ${recipient_phone || ''}`
+        : `📍 นัดรับ${timeStr}`
       const msg = [
         `🐔 <b>ออเดอร์ใหม่!</b>`,
         `#${data.id.slice(0, 6).toUpperCase()} — ${customer_name.trim()}`,

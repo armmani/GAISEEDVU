@@ -38,7 +38,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (existing.status !== 'pending') return NextResponse.json({ error: 'แก้ไขได้เฉพาะออเดอร์ที่รอยืนยันเท่านั้น' }, { status: 400 })
 
   const body = await req.json()
-  const { items, pickup_date, delivery_type, pickup_location, delivery_address, note } = body
+  const { items, pickup_date, pickup_time, delivery_type, pickup_location, delivery_address, recipient_name, recipient_phone, note } = body
 
   if (!Array.isArray(items) || items.length === 0) {
     return NextResponse.json({ error: 'กรุณาเพิ่มสินค้าอย่างน้อย 1 สูตร' }, { status: 400 })
@@ -77,9 +77,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       quantity: totalQty,
       total_amount: calculatedTotal,
       pickup_date,
+      pickup_time: pickup_time || null,
       delivery_type,
       pickup_location: pickup_location || null,
       delivery_address: delivery_address?.trim() || null,
+      recipient_name: delivery_type === 'grab' ? (recipient_name?.trim() || null) : null,
+      recipient_phone: delivery_type === 'grab' ? (recipient_phone?.trim() || null) : null,
       note: note?.trim() || null,
       salt_level: null,
       no_pepper: !!first.no_pepper,

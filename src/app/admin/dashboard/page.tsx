@@ -348,6 +348,7 @@ export default function AdminDashboard() {
                       <span className="font-bold">{order.total_amount.toLocaleString()} บาท</span>
                       <span className="ml-auto font-bold" style={{ color: '#1a5eb8' }}>
                         📅 {new Date(order.pickup_date).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' })}
+                        {order.pickup_time ? ` · ${order.pickup_time}` : ''}
                       </span>
                     </div>
 
@@ -361,6 +362,12 @@ export default function AdminDashboard() {
                           : PICKUP_LOCATIONS[order.pickup_location!]}
                       </span>
                     </div>
+
+                    {order.delivery_type === 'grab' && order.recipient_name && (
+                      <div style={{ color: '#7a4a4b' }}>
+                        👤 {order.recipient_name}{order.recipient_phone ? ` · ${order.recipient_phone}` : ''}
+                      </div>
+                    )}
 
                     <div className="space-y-0.5">
                       {orderItems.map((it, i) => (

@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import QRCode from 'qrcode'
 import { CheckCircle, Upload, Clock, MapPin, Truck } from 'lucide-react'
-import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, type Order } from '@/lib/types'
+import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, getOrderItems, itemLabel, type Order } from '@/lib/types'
 import BottomNav from '@/components/BottomNav'
 import ChickenLoader from '@/components/ChickenLoader'
 
@@ -133,14 +133,24 @@ export default function OrderConfirmPage() {
               <span className="font-medium" style={{ color: '#7a4a4b' }}>เบอร์</span>
               <span className="font-bold">{order.phone}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="font-medium" style={{ color: '#7a4a4b' }}>สินค้า</span>
-              <span className="font-bold">Original × {order.quantity} ชิ้น</span>
+            <div className="space-y-0.5">
+              {getOrderItems(order).map((it, i) => (
+                <div key={i} className="flex justify-between">
+                  <span className="font-medium" style={{ color: '#7a4a4b' }}>{i === 0 ? 'สินค้า' : ''}</span>
+                  <span className="font-bold text-right">{itemLabel(it)} × {it.quantity} ชิ้น</span>
+                </div>
+              ))}
             </div>
             <div className="flex justify-between">
               <span className="font-medium" style={{ color: '#7a4a4b' }}>วันรับ</span>
               <span className="font-bold">{new Date(order.pickup_date).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
             </div>
+            {order.pickup_time && (
+              <div className="flex justify-between">
+                <span className="font-medium" style={{ color: '#7a4a4b' }}>ช่วงเวลา</span>
+                <span className="font-bold">{order.pickup_time}</span>
+              </div>
+            )}
             <div className="flex justify-between items-start">
               <span className="font-medium shrink-0" style={{ color: '#7a4a4b' }}>
                 {isPickup ? <MapPin size={14} className="inline mr-1" /> : <Truck size={14} className="inline mr-1" />}
@@ -152,6 +162,14 @@ export default function OrderConfirmPage() {
                   : order.delivery_address}
               </span>
             </div>
+            {!isPickup && order.recipient_name && (
+              <div className="flex justify-between">
+                <span className="font-medium" style={{ color: '#7a4a4b' }}>ผู้รับ</span>
+                <span className="font-bold text-right ml-4">
+                  {order.recipient_name}{order.recipient_phone ? ` · ${order.recipient_phone}` : ''}
+                </span>
+              </div>
+            )}
             {order.note && (
               <div className="flex justify-between">
                 <span className="font-medium" style={{ color: '#7a4a4b' }}>หมายเหตุ</span>

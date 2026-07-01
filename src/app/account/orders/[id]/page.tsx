@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, MapPin, Truck, ExternalLink, Pencil, X, Minus, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, getOrderItems, itemLabel, type Order, type OrderStatus, type OrderItem, type DeliveryType, type PickupLocation } from '@/lib/types'
+import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, TIME_SLOTS, getOrderItems, itemLabel, type Order, type OrderStatus, type OrderItem, type DeliveryType, type PickupLocation } from '@/lib/types'
 import ChickenLoader from '@/components/ChickenLoader'
 import dynamic from 'next/dynamic'
 
@@ -80,9 +80,12 @@ export default function OrderDetailPage() {
   // Edit form state
   const [editItems, setEditItems] = useState<OrderItem[]>([defaultItem()])
   const [editDate, setEditDate] = useState('')
+  const [editTime, setEditTime] = useState('')
   const [editDelivery, setEditDelivery] = useState<DeliveryType>('pickup')
   const [editLocation, setEditLocation] = useState<PickupLocation>('donmueang')
   const [editAddress, setEditAddress] = useState('')
+  const [editRecipientName, setEditRecipientName] = useState('')
+  const [editRecipientPhone, setEditRecipientPhone] = useState('')
   const [editNote, setEditNote] = useState('')
   const [mapCoords, setMapCoords] = useState({ lat: 13.7563, lng: 100.5018 })
 
@@ -97,9 +100,12 @@ export default function OrderDetailPage() {
     if (!order) return
     setEditItems(getOrderItems(order))
     setEditDate(order.pickup_date)
+    setEditTime(order.pickup_time ?? '')
     setEditDelivery(order.delivery_type)
     setEditLocation(order.pickup_location ?? 'donmueang')
     setEditAddress(order.delivery_address ?? '')
+    setEditRecipientName(order.recipient_name ?? '')
+    setEditRecipientPhone(order.recipient_phone ?? '')
     setEditNote(order.note ?? '')
     setEditing(true)
   }
@@ -113,9 +119,12 @@ export default function OrderDetailPage() {
         body: JSON.stringify({
           items: editItems,
           pickup_date: editDate,
+          pickup_time: editTime || null,
           delivery_type: editDelivery,
           pickup_location: editDelivery === 'pickup' ? editLocation : null,
           delivery_address: editDelivery === 'grab' ? editAddress : null,
+          recipient_name: editDelivery === 'grab' ? editRecipientName : null,
+          recipient_phone: editDelivery === 'grab' ? editRecipientPhone : null,
           note: editNote,
         }),
       })
@@ -188,12 +197,24 @@ export default function OrderDetailPage() {
             </div>
           </div>
 
-          {/* Date */}
-          <div className="rounded-2xl p-5 border-2" style={{ background: 'white', borderColor: '#e8c4c4' }}>
-            <h3 className="font-bold text-base mb-2" style={{ color: '#4a2728' }}>วันที่รับสินค้า</h3>
+          {/* Date + time */}
+          <div className="rounded-2xl p-5 border-2 space-y-3" style={{ background: 'white', borderColor: '#e8c4c4' }}>
+            <h3 className="font-bold text-base" style={{ color: '#4a2728' }}>วันและเวลารับสินค้า</h3>
             <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} min={getMinDate()}
               className="w-full rounded-xl px-4 py-3 border-2 text-sm font-medium"
               style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
+            <div>
+              <p className="text-xs font-semibold mb-1.5" style={{ color: '#7a4a4b' }}>ช่วงเวลาที่สะดวก</p>
+              <div className="grid grid-cols-2 gap-2">
+                {TIME_SLOTS.map(slot => (
+                  <button key={slot} type="button" onClick={() => setEditTime(editTime === slot ? '' : slot)}
+                    className="rounded-lg py-2 text-xs font-bold border-2 transition-all"
+                    style={{ borderColor: editTime === slot ? '#4a2728' : '#e8c4c4', background: editTime === slot ? '#4a2728' : 'white', color: editTime === slot ? '#f2dada' : '#4a2728' }}>
+                    {slot}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Delivery */}
@@ -227,6 +248,14 @@ export default function OrderDetailPage() {
                 <textarea value={editAddress} onChange={e => setEditAddress(e.target.value)}
                   placeholder="ที่อยู่จัดส่ง" rows={2}
                   className="w-full rounded-xl px-3 py-2.5 border-2 text-sm resize-none"
+                  style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
+                <input type="text" value={editRecipientName} onChange={e => setEditRecipientName(e.target.value)}
+                  placeholder="ชื่อผู้รับ"
+                  className="w-full rounded-xl px-3 py-2.5 border-2 text-sm"
+                  style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
+                <input type="tel" value={editRecipientPhone} onChange={e => setEditRecipientPhone(e.target.value)}
+                  placeholder="เบอร์โทรผู้รับ"
+                  className="w-full rounded-xl px-3 py-2.5 border-2 text-sm"
                   style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
               </div>
             )}
@@ -318,15 +347,22 @@ export default function OrderDetailPage() {
             ))}
           </div>
 
-          {[
-            ['วันรับ', new Date(order.pickup_date + 'T00:00:00').toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })],
-            ['ยอดรวม', `${order.total_amount.toLocaleString()} บาท`],
-          ].map(([label, value]) => (
-            <div key={label} className="flex justify-between">
-              <span style={{ color: '#7a4a4b' }}>{label}</span>
-              <span className="font-bold" style={{ color: '#4a2728' }}>{value}</span>
+          <div className="flex justify-between">
+            <span style={{ color: '#7a4a4b' }}>วันรับ</span>
+            <span className="font-bold" style={{ color: '#4a2728' }}>
+              {new Date(order.pickup_date + 'T00:00:00').toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })}
+            </span>
+          </div>
+          {order.pickup_time && (
+            <div className="flex justify-between">
+              <span style={{ color: '#7a4a4b' }}>ช่วงเวลา</span>
+              <span className="font-bold" style={{ color: '#4a2728' }}>{order.pickup_time}</span>
             </div>
-          ))}
+          )}
+          <div className="flex justify-between">
+            <span style={{ color: '#7a4a4b' }}>ยอดรวม</span>
+            <span className="font-bold" style={{ color: '#4a2728' }}>{order.total_amount.toLocaleString()} บาท</span>
+          </div>
 
           <div className="flex justify-between items-start">
             <span style={{ color: '#7a4a4b' }}>
@@ -337,6 +373,15 @@ export default function OrderDetailPage() {
               {order.delivery_type === 'pickup' ? PICKUP_LOCATIONS[order.pickup_location!] : order.delivery_address}
             </span>
           </div>
+
+          {order.delivery_type === 'grab' && order.recipient_name && (
+            <div className="flex justify-between">
+              <span style={{ color: '#7a4a4b' }}>ผู้รับ</span>
+              <span className="font-bold text-right ml-4" style={{ color: '#4a2728' }}>
+                {order.recipient_name}{order.recipient_phone ? ` · ${order.recipient_phone}` : ''}
+              </span>
+            </div>
+          )}
 
           {order.note && (
             <div className="flex justify-between">

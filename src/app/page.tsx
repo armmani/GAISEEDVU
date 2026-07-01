@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { ShoppingBag, MapPin, Truck, Minus, Plus, X } from 'lucide-react'
-import { PICKUP_LOCATIONS, PRICE_PER_PIECE, getOrderItems, type DeliveryType, type PickupLocation, type OrderItem } from '@/lib/types'
+import { PICKUP_LOCATIONS, PRICE_PER_PIECE, TIME_SLOTS, getOrderItems, type DeliveryType, type PickupLocation, type OrderItem } from '@/lib/types'
 import BottomNav from '@/components/BottomNav'
 import dynamic from 'next/dynamic'
 
@@ -89,7 +89,8 @@ export default function OrderPage() {
   const [mapCoords, setMapCoords] = useState({ lat: 13.7563, lng: 100.5018 })
   const [blockedRanges, setBlockedRanges] = useState<{ start_date: string; end_date: string; note: string | null }[]>([])
   const [items, setItems] = useState<OrderItem[]>([defaultItem()])
-  const [form, setForm] = useState({ customer_name: '', phone: '', delivery_address: '', pickup_date: '', note: '' })
+  const [pickupTime, setPickupTime] = useState('')
+  const [form, setForm] = useState({ customer_name: '', phone: '', delivery_address: '', pickup_date: '', recipient_name: '', recipient_phone: '', note: '' })
 
   const totalQty = items.reduce((s, i) => s + i.quantity, 0)
   const total = totalQty * pricePerPiece
@@ -97,7 +98,7 @@ export default function OrderPage() {
   useEffect(() => {
     fetch('/api/account/pricing').then(r => r.json()).then(d => { if (d.price_per_piece) setPricePerPiece(d.price_per_piece) }).catch(() => {})
     fetch('/api/account/profile').then(r => r.json()).then(profile => {
-      if (profile) setForm(prev => ({ ...prev, customer_name: profile.display_name || '', phone: profile.phone || '', delivery_address: profile.default_address || '' }))
+      if (profile) setForm(prev => ({ ...prev, customer_name: profile.display_name || '', phone: profile.phone || '', delivery_address: profile.default_address || '', recipient_name: profile.display_name || '', recipient_phone: profile.phone || '' }))
     }).catch(() => {})
     fetch('/api/blocked-dates').then(r => r.json()).then(d => { if (Array.isArray(d)) setBlockedRanges(d) }).catch(() => {})
 
@@ -116,6 +117,7 @@ export default function OrderPage() {
           }))
           setDeliveryType(order.delivery_type)
           if (order.pickup_location) setPickupLocation(order.pickup_location)
+          if (order.pickup_time) setPickupTime(order.pickup_time)
           setItems(getOrderItems(order))
         }
       }).catch(() => {})
@@ -141,7 +143,7 @@ export default function OrderPage() {
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, items, delivery_type: deliveryType, pickup_location: deliveryType === 'pickup' ? pickupLocation : null }),
+        body: JSON.stringify({ ...form, items, pickup_time: pickupTime || null, delivery_type: deliveryType, pickup_location: deliveryType === 'pickup' ? pickupLocation : null }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'เกิดข้อผิดพลาด')
@@ -263,6 +265,22 @@ export default function OrderPage() {
                     className="w-full rounded-xl px-4 py-3 border-2 text-sm font-medium resize-none"
                     style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
                 </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: '#7a4a4b' }}>ชื่อผู้รับ</label>
+                    <input type="text" value={form.recipient_name} onChange={e => setField('recipient_name', e.target.value)}
+                      placeholder="ชื่อ-นามสกุล"
+                      className="w-full rounded-xl px-3 py-2.5 border-2 text-sm font-medium"
+                      style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: '#7a4a4b' }}>เบอร์ผู้รับ</label>
+                    <input type="tel" value={form.recipient_phone} onChange={e => setField('recipient_phone', e.target.value)}
+                      placeholder="08X-XXX-XXXX"
+                      className="w-full rounded-xl px-3 py-2.5 border-2 text-sm font-medium"
+                      style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
+                  </div>
+                </div>
                 <p className="text-xs" style={{ color: '#7a4a4b' }}>ค่าส่ง Grab เก็บปลายทาง</p>
               </div>
             )}
@@ -300,6 +318,24 @@ export default function OrderPage() {
               className="w-full rounded-xl px-4 py-3 border-2 text-sm font-medium"
               style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
             <p className="text-xs mt-2" style={{ color: '#7a4a4b' }}>สั่งล่วงหน้าอย่างน้อย 1 วัน</p>
+
+            <div className="mt-4">
+              <p className="text-sm font-semibold mb-2" style={{ color: '#7a4a4b' }}>ช่วงเวลาที่สะดวกรับ</p>
+              <div className="grid grid-cols-2 gap-2">
+                {TIME_SLOTS.map(slot => (
+                  <button key={slot} type="button" onClick={() => setPickupTime(pickupTime === slot ? '' : slot)}
+                    className="rounded-xl py-2.5 text-sm font-bold border-2 transition-all"
+                    style={{
+                      borderColor: pickupTime === slot ? '#4a2728' : '#e8c4c4',
+                      background: pickupTime === slot ? '#4a2728' : 'white',
+                      color: pickupTime === slot ? '#f2dada' : '#4a2728',
+                    }}>
+                    {slot}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs mt-1.5" style={{ color: '#b09090' }}>ไม่บังคับ — แจ้งให้รู้ประมาณช่วงที่สะดวก</p>
+            </div>
           </div>
 
           {/* Items */}

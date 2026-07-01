@@ -19,6 +19,9 @@ export interface Order {
   pickup_location: PickupLocation | null
   delivery_address: string | null
   pickup_date: string
+  pickup_time: string | null
+  recipient_name: string | null
+  recipient_phone: string | null
   status: OrderStatus
   payment_slip_url: string | null
   note: string | null
@@ -29,6 +32,8 @@ export interface Order {
   created_at: string
   items: OrderItem[] | null
 }
+
+export const TIME_SLOTS = ['09:00–12:00', '12:00–15:00', '15:00–18:00', '18:00–21:00'] as const
 
 export const SALT_LEVEL_LABEL: Record<SaltLevel, string> = {
   less: 'เค็มน้อย',
