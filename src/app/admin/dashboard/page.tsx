@@ -474,12 +474,10 @@ export default function AdminDashboard() {
 
               {/* Lifetime overview */}
               <div className="rounded-2xl border-2 overflow-hidden" style={{ background: 'white', borderColor: '#e8c4c4' }}>
-                <div className="px-4 py-3" style={{ background: '#4a2728' }}>
-                  <p className="text-xs font-bold mb-0.5" style={{ color: '#f2dada99' }}>ภาพรวมทั้งหมด (ยืนยันแล้ว + เสร็จสิ้น)</p>
-                  <div className="flex items-end justify-between">
-                    <span className="text-3xl font-black" style={{ color: '#f2dada' }}>{allTotalPieces} ชิ้น</span>
-                    <span className="text-base font-bold" style={{ color: '#f2dada' }}>{allTotalRevenue.toLocaleString()} บาท</span>
-                  </div>
+                <div className="px-4 py-3 space-y-1" style={{ background: '#4a2728' }}>
+                  <p className="text-xs font-semibold" style={{ color: '#f2dada80' }}>ภาพรวมทั้งหมด · ยืนยันแล้ว + เสร็จสิ้น</p>
+                  <p className="text-3xl font-black" style={{ color: '#f2dada' }}>{allTotalPieces} ชิ้น</p>
+                  <p className="text-sm font-bold" style={{ color: '#f2dada99' }}>{allTotalRevenue.toLocaleString()} บาท</p>
                 </div>
                 {allCombos.size > 0 && (
                   <div className="px-4 py-3 space-y-3">
