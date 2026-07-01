@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createClient as createServerClient } from '@/lib/supabase/server'
+import { sendTelegram } from '@/lib/telegram'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,6 +31,12 @@ export async function POST(req: NextRequest) {
     .upsert({ id: user_id, display_name, phone, default_address, telegram_chat_id: telegram_chat_id || null, updated_at: new Date().toISOString() })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID
+  if (adminChatId) {
+    await sendTelegram(adminChatId, `🆕 <b>สมาชิกใหม่!</b>\n👤 ${display_name || '—'}\n📞 ${phone || '—'}`)
+  }
+
   return NextResponse.json({ ok: true })
 }
 
