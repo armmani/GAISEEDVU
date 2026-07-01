@@ -482,22 +482,24 @@ export default function AdminDashboard() {
                   </div>
                 </div>
                 {allCombos.size > 0 && (
-                  <div className="px-4 py-3 space-y-1.5">
-                    <p className="text-xs font-bold mb-2" style={{ color: '#7a4a4b' }}>🧂 แยกตามสูตร</p>
+                  <div className="px-4 py-3 space-y-3">
+                    <p className="text-xs font-bold" style={{ color: '#7a4a4b' }}>🧂 แยกตามสูตร</p>
                     {Array.from(allCombos.entries())
                       .sort((a, b) => b[1] - a[1])
-                      .map(([label, count]) => (
-                        <div key={label} className="flex items-center gap-3">
-                          <div className="flex-1 rounded-lg overflow-hidden h-7 flex items-center" style={{ background: '#f9f0f0' }}>
-                            <div className="h-full flex items-center px-3 text-xs font-bold"
-                              style={{ width: `${Math.round((count / allTotalPieces) * 100)}%`, minWidth: '2rem', background: '#4a2728', color: '#f2dada' }}>
-                              {Math.round((count / allTotalPieces) * 100)}%
+                      .map(([label, count]) => {
+                        const pct = Math.round((count / allTotalPieces) * 100)
+                        return (
+                          <div key={label} className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-semibold" style={{ color: '#4a2728' }}>{label}</span>
+                              <span className="text-sm font-black" style={{ color: '#4a2728' }}>{count} ชิ้น · {pct}%</span>
+                            </div>
+                            <div className="rounded-full h-2.5 overflow-hidden" style={{ background: '#f0e0e0' }}>
+                              <div className="h-full rounded-full" style={{ width: `${pct}%`, background: '#4a2728' }} />
                             </div>
                           </div>
-                          <span className="text-sm font-medium shrink-0" style={{ color: '#4a2728', minWidth: '5rem' }}>{label}</span>
-                          <span className="text-base font-black shrink-0 w-14 text-right" style={{ color: '#4a2728' }}>{count} ชิ้น</span>
-                        </div>
-                      ))}
+                        )
+                      })}
                   </div>
                 )}
                 {allCombos.size === 0 && (
