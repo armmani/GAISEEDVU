@@ -447,8 +447,20 @@ export default function AdminDashboard() {
         {/* SUMMARY TAB */}
         {tab === 'summary' && (() => {
           const workOrders = orders.filter(o => o.status === 'confirmed' || o.status === 'ready')
+          const soldOrders = orders.filter(o => o.status !== 'cancelled' && o.status !== 'pending')
 
-          // Group by pickup_date
+          // Lifetime recipe breakdown (completed + confirmed + ready)
+          const allCombos = new Map<string, number>()
+          for (const o of soldOrders) {
+            for (const it of getOrderItems(o)) {
+              const label = itemLabel(it)
+              allCombos.set(label, (allCombos.get(label) ?? 0) + it.quantity)
+            }
+          }
+          const allTotalPieces = soldOrders.reduce((s, o) => s + o.quantity, 0)
+          const allTotalRevenue = soldOrders.reduce((s, o) => s + o.total_amount, 0)
+
+          // Group active by pickup_date
           const byDate = new Map<string, Order[]>()
           for (const o of workOrders) {
             const d = o.pickup_date.slice(0, 10)
@@ -459,19 +471,46 @@ export default function AdminDashboard() {
 
           return (
             <div className="space-y-4">
-              {workOrders.length === 0 && (
-                <div className="text-center py-10 text-sm rounded-2xl border-2"
-                  style={{ background: 'white', borderColor: '#e8c4c4', color: '#7a4a4b' }}>
-                  ไม่มีออเดอร์ที่ยืนยันแล้ว
-                </div>
-              )}
 
-              {/* Grand total */}
+              {/* Lifetime overview */}
+              <div className="rounded-2xl border-2 overflow-hidden" style={{ background: 'white', borderColor: '#e8c4c4' }}>
+                <div className="px-4 py-3" style={{ background: '#4a2728' }}>
+                  <p className="text-xs font-bold mb-0.5" style={{ color: '#f2dada99' }}>ภาพรวมทั้งหมด (ยืนยันแล้ว + เสร็จสิ้น)</p>
+                  <div className="flex items-end justify-between">
+                    <span className="text-3xl font-black" style={{ color: '#f2dada' }}>{allTotalPieces} ชิ้น</span>
+                    <span className="text-base font-bold" style={{ color: '#f2dada' }}>{allTotalRevenue.toLocaleString()} บาท</span>
+                  </div>
+                </div>
+                {allCombos.size > 0 && (
+                  <div className="px-4 py-3 space-y-1.5">
+                    <p className="text-xs font-bold mb-2" style={{ color: '#7a4a4b' }}>🧂 แยกตามสูตร</p>
+                    {Array.from(allCombos.entries())
+                      .sort((a, b) => b[1] - a[1])
+                      .map(([label, count]) => (
+                        <div key={label} className="flex items-center gap-3">
+                          <div className="flex-1 rounded-lg overflow-hidden h-7 flex items-center" style={{ background: '#f9f0f0' }}>
+                            <div className="h-full flex items-center px-3 text-xs font-bold"
+                              style={{ width: `${Math.round((count / allTotalPieces) * 100)}%`, minWidth: '2rem', background: '#4a2728', color: '#f2dada' }}>
+                              {Math.round((count / allTotalPieces) * 100)}%
+                            </div>
+                          </div>
+                          <span className="text-sm font-medium shrink-0" style={{ color: '#4a2728', minWidth: '5rem' }}>{label}</span>
+                          <span className="text-base font-black shrink-0 w-14 text-right" style={{ color: '#4a2728' }}>{count} ชิ้น</span>
+                        </div>
+                      ))}
+                  </div>
+                )}
+                {allCombos.size === 0 && (
+                  <p className="px-4 py-3 text-sm text-center" style={{ color: '#b09090' }}>ยังไม่มีออเดอร์</p>
+                )}
+              </div>
+
+              {/* Active orders header */}
               {workOrders.length > 0 && (
                 <div className="rounded-2xl p-4 border-2 flex items-center justify-between"
-                  style={{ background: '#4a2728', borderColor: '#4a2728' }}>
-                  <span className="font-bold text-base" style={{ color: '#f2dada' }}>รวมทั้งหมด</span>
-                  <span className="text-3xl font-black" style={{ color: '#f2dada' }}>
+                  style={{ background: '#d6e8ff', borderColor: '#a8caff' }}>
+                  <span className="font-bold text-base" style={{ color: '#1a5eb8' }}>กำลังดำเนินการ</span>
+                  <span className="text-3xl font-black" style={{ color: '#1a5eb8' }}>
                     {workOrders.reduce((s, o) => s + o.quantity, 0)} ชิ้น
                   </span>
                 </div>
