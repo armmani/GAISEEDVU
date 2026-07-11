@@ -66,14 +66,19 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
 
 export const PRICE_PER_PIECE = 65
 
+// Orders created before the pepper_level migration store items as { no_pepper: boolean }
+type LegacyOrderItem = Partial<OrderItem> & { quantity: number; no_pepper?: boolean }
+
 export function getOrderItems(order: Order): OrderItem[] {
-  if (order.items && order.items.length > 0) return order.items
-  return [{
-    quantity: order.quantity,
-    pepper_level: order.no_pepper ? 'none' : 'normal',
-    sesame_oil: order.sesame_oil ?? false,
-    no_salt: false,
-  }]
+  const raw: LegacyOrderItem[] = (order.items && order.items.length > 0)
+    ? order.items
+    : [{ quantity: order.quantity, no_pepper: order.no_pepper, sesame_oil: order.sesame_oil }]
+  return raw.map(it => ({
+    quantity: it.quantity,
+    pepper_level: it.pepper_level ?? (it.no_pepper ? 'none' : 'normal'),
+    sesame_oil: it.sesame_oil ?? false,
+    no_salt: it.no_salt ?? false,
+  }))
 }
 
 export function itemLabel(item: OrderItem): string {
