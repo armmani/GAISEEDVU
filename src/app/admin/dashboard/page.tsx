@@ -365,7 +365,7 @@ export default function AdminDashboard() {
 
                     {order.delivery_type === 'grab' && order.recipient_name && (
                       <div style={{ color: '#7a4a4b' }}>
-                        👤 {order.recipient_name}{order.recipient_phone ? ` · ${order.recipient_phone}` : ''}
+                        👤 {order.recipient_name}{order.recipient_phone ? ` · ${order.recipient_phone}` : ''}{order.recipient_line_id ? ` · LINE: ${order.recipient_line_id}` : ''}
                       </div>
                     )}
 

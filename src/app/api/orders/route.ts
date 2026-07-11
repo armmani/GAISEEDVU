@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
 
     const body = await req.json()
-    const { customer_name, phone, delivery_type, pickup_location, delivery_address, pickup_date, pickup_time, recipient_name, recipient_phone, note, items } = body
+    const { customer_name, phone, delivery_type, pickup_location, delivery_address, pickup_date, pickup_time, recipient_name, recipient_phone, recipient_line_id, note, items } = body
 
     if (!customer_name || !phone || !pickup_date || !delivery_type) {
       return NextResponse.json({ error: 'ข้อมูลไม่ครบ' }, { status: 400 })
@@ -26,9 +26,11 @@ export async function POST(req: NextRequest) {
     }
 
     const nowTH = new Date(Date.now() + 7 * 60 * 60 * 1000)
-    const todayTH = nowTH.toISOString().split('T')[0]
-    if (pickup_date <= todayTH) {
-      return NextResponse.json({ error: 'วันรับต้องเป็นวันพรุ่งนี้เป็นต้นไป' }, { status: 400 })
+    const minDateTH = new Date(nowTH)
+    minDateTH.setDate(minDateTH.getDate() + 2)
+    const minTH = minDateTH.toISOString().split('T')[0]
+    if (pickup_date < minTH) {
+      return NextResponse.json({ error: 'วันรับต้องเว้นล่วงหน้าอย่างน้อย 2 วัน' }, { status: 400 })
     }
 
     const [{ data: settings }, { data: blockedRanges }] = await Promise.all([
@@ -73,9 +75,10 @@ export async function POST(req: NextRequest) {
         pickup_time: pickup_time || null,
         recipient_name: delivery_type === 'grab' ? (recipient_name?.trim() || null) : null,
         recipient_phone: delivery_type === 'grab' ? (recipient_phone?.trim() || null) : null,
+        recipient_line_id: delivery_type === 'grab' ? (recipient_line_id?.trim() || null) : null,
         note: note?.trim() || null,
         salt_level: null,
-        no_pepper: !!first.no_pepper,
+        no_pepper: first.pepper_level === 'none',
         sesame_oil: !!first.sesame_oil,
         items,
         status: 'pending',
@@ -92,7 +95,7 @@ export async function POST(req: NextRequest) {
       ).join('\n')
       const timeStr = pickup_time ? ` (${pickup_time})` : ''
       const delivery = delivery_type === 'grab'
-        ? `🚚 Grab: ${delivery_address || '-'}${timeStr}\n  ผู้รับ: ${recipient_name || '-'} ${recipient_phone || ''}`
+        ? `🚚 Grab: ${delivery_address || '-'}${timeStr}\n  ผู้รับ: ${recipient_name || '-'} ${recipient_phone || ''}${recipient_line_id ? ` · LINE: ${recipient_line_id}` : ''}`
         : `📍 นัดรับ${timeStr}`
       const msg = [
         `🐔 <b>ออเดอร์ใหม่!</b>`,

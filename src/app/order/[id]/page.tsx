@@ -170,6 +170,12 @@ export default function OrderConfirmPage() {
                 </span>
               </div>
             )}
+            {!isPickup && order.recipient_line_id && (
+              <div className="flex justify-between">
+                <span className="font-medium" style={{ color: '#7a4a4b' }}>LINE ID</span>
+                <span className="font-bold text-right ml-4">{order.recipient_line_id}</span>
+              </div>
+            )}
             {order.note && (
               <div className="flex justify-between">
                 <span className="font-medium" style={{ color: '#7a4a4b' }}>หมายเหตุ</span>

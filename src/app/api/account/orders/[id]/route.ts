@@ -38,7 +38,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (existing.status !== 'pending') return NextResponse.json({ error: 'แก้ไขได้เฉพาะออเดอร์ที่รอยืนยันเท่านั้น' }, { status: 400 })
 
   const body = await req.json()
-  const { items, pickup_date, pickup_time, delivery_type, pickup_location, delivery_address, recipient_name, recipient_phone, note } = body
+  const { items, pickup_date, pickup_time, delivery_type, pickup_location, delivery_address, recipient_name, recipient_phone, recipient_line_id, note } = body
 
   if (!Array.isArray(items) || items.length === 0) {
     return NextResponse.json({ error: 'กรุณาเพิ่มสินค้าอย่างน้อย 1 สูตร' }, { status: 400 })
@@ -46,9 +46,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!pickup_date) return NextResponse.json({ error: 'กรุณาเลือกวันรับ' }, { status: 400 })
 
   const nowTH = new Date(Date.now() + 7 * 60 * 60 * 1000)
-  const todayTH = nowTH.toISOString().split('T')[0]
-  if (pickup_date <= todayTH) {
-    return NextResponse.json({ error: 'วันรับต้องเป็นวันพรุ่งนี้เป็นต้นไป' }, { status: 400 })
+  const minDateTH = new Date(nowTH)
+  minDateTH.setDate(minDateTH.getDate() + 2)
+  const minTH = minDateTH.toISOString().split('T')[0]
+  if (pickup_date < minTH) {
+    return NextResponse.json({ error: 'วันรับต้องเว้นล่วงหน้าอย่างน้อย 2 วัน' }, { status: 400 })
   }
 
   // Check blocked dates
@@ -83,9 +85,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       delivery_address: delivery_address?.trim() || null,
       recipient_name: delivery_type === 'grab' ? (recipient_name?.trim() || null) : null,
       recipient_phone: delivery_type === 'grab' ? (recipient_phone?.trim() || null) : null,
+      recipient_line_id: delivery_type === 'grab' ? (recipient_line_id?.trim() || null) : null,
       note: note?.trim() || null,
       salt_level: null,
-      no_pepper: !!first.no_pepper,
+      no_pepper: first.pepper_level === 'none',
       sesame_oil: !!first.sesame_oil,
       payment_slip_url: null, // clear slip since amount may change
     })

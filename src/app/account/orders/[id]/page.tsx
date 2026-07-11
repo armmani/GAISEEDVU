@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, MapPin, Truck, ExternalLink, Pencil, X, Minus, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, TIME_SLOTS, getOrderItems, itemLabel, type Order, type OrderStatus, type OrderItem, type DeliveryType, type PickupLocation } from '@/lib/types'
+import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, TIME_SLOTS, PEPPER_LEVEL_LABEL, getOrderItems, itemLabel, type Order, type OrderStatus, type OrderItem, type DeliveryType, type PickupLocation, type PepperLevel } from '@/lib/types'
 import ChickenLoader from '@/components/ChickenLoader'
 import dynamic from 'next/dynamic'
 
@@ -22,11 +22,11 @@ const STATUS_COLORS: Record<OrderStatus, { bg: string; text: string }> = {
 
 function getMinDate() {
   const d = new Date()
-  d.setDate(d.getDate() + 1)
+  d.setDate(d.getDate() + 2)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-const defaultItem = (): OrderItem => ({ quantity: 1, no_pepper: false, sesame_oil: false })
+const defaultItem = (): OrderItem => ({ quantity: 1, pepper_level: 'normal', sesame_oil: false, no_salt: false })
 
 function ItemEditor({ item, idx, total, onChange, onRemove }: {
   item: OrderItem; idx: number; total: number
@@ -50,20 +50,45 @@ function ItemEditor({ item, idx, total, onChange, onRemove }: {
             style={{ background: '#4a2728', color: '#f2dada' }}><Plus size={12} /></button>
         </div>
       </div>
-      <div className="flex gap-1.5">
-        {([['no_pepper', 'ไม่ใส่พริกไท'], ['sesame_oil', 'เพิ่มน้ำมันงา']] as [keyof OrderItem, string][]).map(([key, label]) => (
-          <button key={key} type="button" onClick={() => onChange({ [key]: !item[key] })}
-            className="flex-1 flex items-center gap-1.5 rounded-lg px-2 py-1.5 border-2 text-left transition-all"
-            style={{ borderColor: item[key] ? '#4a2728' : '#e8c4c4', background: item[key] ? '#f2dada' : 'white' }}>
-            <div className="w-3.5 h-3.5 rounded border-2 flex items-center justify-center shrink-0"
-              style={{ borderColor: '#4a2728', background: item[key] ? '#4a2728' : 'white' }}>
-              {item[key] && <svg viewBox="0 0 12 12" className="w-2 h-2" fill="none">
-                <path d="M2 6l3 3 5-5" stroke="#f2dada" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>}
-            </div>
-            <span className="text-xs font-semibold" style={{ color: '#4a2728' }}>{label}</span>
-          </button>
-        ))}
+      <div>
+        <span className="text-xs font-semibold block mb-1" style={{ color: '#7a4a4b' }}>พริกไท</span>
+        <div className="grid grid-cols-3 gap-1.5">
+          {(['normal', 'less', 'none'] as PepperLevel[]).map(level => (
+            <button key={level} type="button" onClick={() => onChange({ pepper_level: level })}
+              className="rounded-lg px-1.5 py-1.5 border-2 text-xs font-semibold transition-all"
+              style={{
+                borderColor: item.pepper_level === level ? '#4a2728' : '#e8c4c4',
+                background: item.pepper_level === level ? '#4a2728' : 'white',
+                color: item.pepper_level === level ? '#f2dada' : '#4a2728',
+              }}>
+              {PEPPER_LEVEL_LABEL[level]}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-1.5">
+        <button type="button" onClick={() => onChange({ sesame_oil: !item.sesame_oil })}
+          className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 border-2 text-left transition-all"
+          style={{ borderColor: item.sesame_oil ? '#4a2728' : '#e8c4c4', background: item.sesame_oil ? '#f2dada' : 'white' }}>
+          <div className="w-3.5 h-3.5 rounded border-2 flex items-center justify-center shrink-0"
+            style={{ borderColor: '#4a2728', background: item.sesame_oil ? '#4a2728' : 'white' }}>
+            {item.sesame_oil && <svg viewBox="0 0 12 12" className="w-2 h-2" fill="none">
+              <path d="M2 6l3 3 5-5" stroke="#f2dada" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>}
+          </div>
+          <span className="text-xs font-semibold" style={{ color: '#4a2728' }}>เพิ่มน้ำมันงา</span>
+        </button>
+        <button type="button" onClick={() => onChange({ no_salt: !item.no_salt })}
+          className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 border-2 text-left transition-all"
+          style={{ borderColor: item.no_salt ? '#4a2728' : '#e8c4c4', background: item.no_salt ? '#f2dada' : 'white' }}>
+          <div className="w-3.5 h-3.5 rounded border-2 flex items-center justify-center shrink-0"
+            style={{ borderColor: '#4a2728', background: item.no_salt ? '#4a2728' : 'white' }}>
+            {item.no_salt && <svg viewBox="0 0 12 12" className="w-2 h-2" fill="none">
+              <path d="M2 6l3 3 5-5" stroke="#f2dada" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>}
+          </div>
+          <span className="text-xs font-semibold" style={{ color: '#4a2728' }}>ไม่ใส่เกลือ</span>
+        </button>
       </div>
     </div>
   )
@@ -86,6 +111,7 @@ export default function OrderDetailPage() {
   const [editAddress, setEditAddress] = useState('')
   const [editRecipientName, setEditRecipientName] = useState('')
   const [editRecipientPhone, setEditRecipientPhone] = useState('')
+  const [editRecipientLineId, setEditRecipientLineId] = useState('')
   const [editNote, setEditNote] = useState('')
   const [mapCoords, setMapCoords] = useState({ lat: 13.7563, lng: 100.5018 })
 
@@ -106,6 +132,7 @@ export default function OrderDetailPage() {
     setEditAddress(order.delivery_address ?? '')
     setEditRecipientName(order.recipient_name ?? '')
     setEditRecipientPhone(order.recipient_phone ?? '')
+    setEditRecipientLineId(order.recipient_line_id ?? '')
     setEditNote(order.note ?? '')
     setEditing(true)
   }
@@ -125,6 +152,7 @@ export default function OrderDetailPage() {
           delivery_address: editDelivery === 'grab' ? editAddress : null,
           recipient_name: editDelivery === 'grab' ? editRecipientName : null,
           recipient_phone: editDelivery === 'grab' ? editRecipientPhone : null,
+          recipient_line_id: editDelivery === 'grab' ? editRecipientLineId : null,
           note: editNote,
         }),
       })
@@ -257,6 +285,10 @@ export default function OrderDetailPage() {
                   placeholder="เบอร์โทรผู้รับ"
                   className="w-full rounded-xl px-3 py-2.5 border-2 text-sm"
                   style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
+                <input type="text" value={editRecipientLineId} onChange={e => setEditRecipientLineId(e.target.value)}
+                  placeholder="LINE ID ผู้รับ (สำหรับติดต่อ Grab)"
+                  className="w-full rounded-xl px-3 py-2.5 border-2 text-sm"
+                  style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
               </div>
             )}
           </div>
@@ -380,6 +412,12 @@ export default function OrderDetailPage() {
               <span className="font-bold text-right ml-4" style={{ color: '#4a2728' }}>
                 {order.recipient_name}{order.recipient_phone ? ` · ${order.recipient_phone}` : ''}
               </span>
+            </div>
+          )}
+          {order.delivery_type === 'grab' && order.recipient_line_id && (
+            <div className="flex justify-between">
+              <span style={{ color: '#7a4a4b' }}>LINE ID</span>
+              <span className="font-bold text-right ml-4" style={{ color: '#4a2728' }}>{order.recipient_line_id}</span>
             </div>
           )}
 

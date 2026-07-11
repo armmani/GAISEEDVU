@@ -2,11 +2,13 @@ export type DeliveryType = 'pickup' | 'grab'
 export type PickupLocation = 'donmueang' | 'siam' | 'chula'
 export type OrderStatus = 'pending' | 'confirmed' | 'ready' | 'completed' | 'cancelled'
 export type SaltLevel = 'less' | 'normal' | 'more'
+export type PepperLevel = 'normal' | 'less' | 'none'
 
 export interface OrderItem {
   quantity: number
-  no_pepper: boolean
+  pepper_level: PepperLevel
   sesame_oil: boolean
+  no_salt: boolean
 }
 
 export interface Order {
@@ -22,6 +24,7 @@ export interface Order {
   pickup_time: string | null
   recipient_name: string | null
   recipient_phone: string | null
+  recipient_line_id: string | null
   status: OrderStatus
   payment_slip_url: string | null
   note: string | null
@@ -39,6 +42,12 @@ export const SALT_LEVEL_LABEL: Record<SaltLevel, string> = {
   less: 'เค็มน้อย',
   normal: 'เค็มปกติ',
   more: 'เค็มมาก',
+}
+
+export const PEPPER_LEVEL_LABEL: Record<PepperLevel, string> = {
+  normal: 'พริกไทปกติ',
+  less: 'ลดพริกไท',
+  none: 'ไม่ใส่พริกไท',
 }
 
 export const PICKUP_LOCATIONS: Record<PickupLocation, string> = {
@@ -61,14 +70,16 @@ export function getOrderItems(order: Order): OrderItem[] {
   if (order.items && order.items.length > 0) return order.items
   return [{
     quantity: order.quantity,
-    no_pepper: order.no_pepper ?? false,
+    pepper_level: order.no_pepper ? 'none' : 'normal',
     sesame_oil: order.sesame_oil ?? false,
+    no_salt: false,
   }]
 }
 
 export function itemLabel(item: OrderItem): string {
   const parts = [
-    item.no_pepper ? 'ไม่ใส่พริกไท' : null,
+    item.pepper_level !== 'normal' ? PEPPER_LEVEL_LABEL[item.pepper_level] : null,
+    item.no_salt ? 'ไม่ใส่เกลือ' : null,
     item.sesame_oil ? 'เพิ่มน้ำมันงา' : null,
   ].filter(Boolean)
   return parts.length > 0 ? parts.join(' · ') : 'สูตรปกติ'

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { ShoppingBag, MapPin, Truck, Minus, Plus, X } from 'lucide-react'
-import { PICKUP_LOCATIONS, PRICE_PER_PIECE, TIME_SLOTS, getOrderItems, type DeliveryType, type PickupLocation, type OrderItem } from '@/lib/types'
+import { PICKUP_LOCATIONS, PRICE_PER_PIECE, TIME_SLOTS, PEPPER_LEVEL_LABEL, getOrderItems, type DeliveryType, type PickupLocation, type OrderItem, type PepperLevel } from '@/lib/types'
 import BottomNav from '@/components/BottomNav'
 import dynamic from 'next/dynamic'
 
@@ -12,14 +12,14 @@ const MapPicker = dynamic(() => import('@/components/MapPicker'), { ssr: false }
 
 function getMinDate() {
   const d = new Date()
-  d.setDate(d.getDate() + 1)
+  d.setDate(d.getDate() + 2)
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
 }
 
-const defaultItem = (): OrderItem => ({ quantity: 1, no_pepper: false, sesame_oil: false })
+const defaultItem = (): OrderItem => ({ quantity: 1, pepper_level: 'normal', sesame_oil: false, no_salt: false })
 
 function ItemCard({ item, idx, total, onChange, onRemove }: {
   item: OrderItem; idx: number; total: number
@@ -57,24 +57,48 @@ function ItemCard({ item, idx, total, onChange, onRemove }: {
         </div>
       </div>
 
-      {/* Checkboxes */}
-      <div className="flex gap-2">
-        {[
-          { key: 'no_pepper' as const, label: 'ไม่ใส่พริกไท' },
-          { key: 'sesame_oil' as const, label: 'เพิ่มน้ำมันงา' },
-        ].map(({ key, label }) => (
-          <button key={key} type="button" onClick={() => onChange({ [key]: !item[key] })}
-            className="flex-1 flex items-center gap-2 rounded-lg px-3 py-2 border-2 text-left transition-all"
-            style={{ borderColor: item[key] ? '#4a2728' : '#e8c4c4', background: item[key] ? '#f2dada' : 'white' }}>
-            <div className="w-4 h-4 rounded border-2 flex items-center justify-center shrink-0"
-              style={{ borderColor: '#4a2728', background: item[key] ? '#4a2728' : 'white' }}>
-              {item[key] && <svg viewBox="0 0 12 12" className="w-2.5 h-2.5" fill="none">
-                <path d="M2 6l3 3 5-5" stroke="#f2dada" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>}
-            </div>
-            <span className="text-xs font-semibold" style={{ color: '#4a2728' }}>{label}</span>
-          </button>
-        ))}
+      {/* Pepper level */}
+      <div>
+        <span className="text-xs font-semibold block mb-1.5" style={{ color: '#7a4a4b' }}>พริกไท</span>
+        <div className="grid grid-cols-3 gap-1.5">
+          {(['normal', 'less', 'none'] as PepperLevel[]).map(level => (
+            <button key={level} type="button" onClick={() => onChange({ pepper_level: level })}
+              className="rounded-lg px-2 py-1.5 border-2 text-xs font-semibold transition-all"
+              style={{
+                borderColor: item.pepper_level === level ? '#4a2728' : '#e8c4c4',
+                background: item.pepper_level === level ? '#4a2728' : 'white',
+                color: item.pepper_level === level ? '#f2dada' : '#4a2728',
+              }}>
+              {PEPPER_LEVEL_LABEL[level]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Sesame oil & no salt */}
+      <div className="grid grid-cols-2 gap-1.5">
+        <button type="button" onClick={() => onChange({ sesame_oil: !item.sesame_oil })}
+          className="flex items-center gap-2 rounded-lg px-3 py-2 border-2 text-left transition-all"
+          style={{ borderColor: item.sesame_oil ? '#4a2728' : '#e8c4c4', background: item.sesame_oil ? '#f2dada' : 'white' }}>
+          <div className="w-4 h-4 rounded border-2 flex items-center justify-center shrink-0"
+            style={{ borderColor: '#4a2728', background: item.sesame_oil ? '#4a2728' : 'white' }}>
+            {item.sesame_oil && <svg viewBox="0 0 12 12" className="w-2.5 h-2.5" fill="none">
+              <path d="M2 6l3 3 5-5" stroke="#f2dada" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>}
+          </div>
+          <span className="text-xs font-semibold" style={{ color: '#4a2728' }}>เพิ่มน้ำมันงา</span>
+        </button>
+        <button type="button" onClick={() => onChange({ no_salt: !item.no_salt })}
+          className="flex items-center gap-2 rounded-lg px-3 py-2 border-2 text-left transition-all"
+          style={{ borderColor: item.no_salt ? '#4a2728' : '#e8c4c4', background: item.no_salt ? '#f2dada' : 'white' }}>
+          <div className="w-4 h-4 rounded border-2 flex items-center justify-center shrink-0"
+            style={{ borderColor: '#4a2728', background: item.no_salt ? '#4a2728' : 'white' }}>
+            {item.no_salt && <svg viewBox="0 0 12 12" className="w-2.5 h-2.5" fill="none">
+              <path d="M2 6l3 3 5-5" stroke="#f2dada" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>}
+          </div>
+          <span className="text-xs font-semibold" style={{ color: '#4a2728' }}>ไม่ใส่เกลือ</span>
+        </button>
       </div>
     </div>
   )
@@ -90,7 +114,7 @@ export default function OrderPage() {
   const [blockedRanges, setBlockedRanges] = useState<{ start_date: string; end_date: string; note: string | null }[]>([])
   const [items, setItems] = useState<OrderItem[]>([defaultItem()])
   const [pickupTime, setPickupTime] = useState('')
-  const [form, setForm] = useState({ customer_name: '', phone: '', delivery_address: '', pickup_date: '', recipient_name: '', recipient_phone: '', note: '' })
+  const [form, setForm] = useState({ customer_name: '', phone: '', delivery_address: '', pickup_date: '', recipient_name: '', recipient_phone: '', recipient_line_id: '', note: '' })
 
   const totalQty = items.reduce((s, i) => s + i.quantity, 0)
   const total = totalQty * pricePerPiece
@@ -281,6 +305,13 @@ export default function OrderPage() {
                       style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
                   </div>
                 </div>
+                <div>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: '#7a4a4b' }}>LINE ID ผู้รับ (สำหรับติดต่อ Grab)</label>
+                  <input type="text" value={form.recipient_line_id} onChange={e => setField('recipient_line_id', e.target.value)}
+                    placeholder="LINE ID"
+                    className="w-full rounded-xl px-3 py-2.5 border-2 text-sm font-medium"
+                    style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
+                </div>
                 <p className="text-xs" style={{ color: '#7a4a4b' }}>ค่าส่ง Grab เก็บปลายทาง</p>
               </div>
             )}
@@ -317,7 +348,7 @@ export default function OrderPage() {
               min={getMinDate()}
               className="w-full rounded-xl px-4 py-3 border-2 text-sm font-medium"
               style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
-            <p className="text-xs mt-2" style={{ color: '#7a4a4b' }}>สั่งล่วงหน้าอย่างน้อย 1 วัน</p>
+            <p className="text-xs mt-2" style={{ color: '#7a4a4b' }}>สั่งล่วงหน้าอย่างน้อย 2 วัน</p>
 
             <div className="mt-4">
               <p className="text-sm font-semibold mb-2" style={{ color: '#7a4a4b' }}>ช่วงเวลาที่สะดวกรับ</p>
