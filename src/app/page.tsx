@@ -338,7 +338,10 @@ export default function OrderPage() {
             <input type="date" value={form.pickup_date}
               onChange={e => {
                 const val = e.target.value
-                if (blockedRanges.some(r => val >= r.start_date && val <= r.end_date)) {
+                if (val && val < getMinDate()) {
+                  toast.error('ต้องสั่งล่วงหน้าอย่างน้อย 2 วัน')
+                  setField('pickup_date', '')
+                } else if (blockedRanges.some(r => val >= r.start_date && val <= r.end_date)) {
                   toast.error('วันที่เลือกไม่สะดวกรับออเดอร์ กรุณาเลือกวันอื่น')
                   setField('pickup_date', '')
                 } else {

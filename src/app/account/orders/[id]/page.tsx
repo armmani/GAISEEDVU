@@ -228,7 +228,15 @@ export default function OrderDetailPage() {
           {/* Date + time */}
           <div className="rounded-2xl p-5 border-2 space-y-3" style={{ background: 'white', borderColor: '#e8c4c4' }}>
             <h3 className="font-bold text-base" style={{ color: '#4a2728' }}>วันและเวลารับสินค้า</h3>
-            <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} min={getMinDate()}
+            <input type="date" value={editDate} onChange={e => {
+              const val = e.target.value
+              if (val && val < getMinDate()) {
+                toast.error('ต้องสั่งล่วงหน้าอย่างน้อย 2 วัน')
+                setEditDate('')
+              } else {
+                setEditDate(val)
+              }
+            }} min={getMinDate()}
               className="w-full rounded-xl px-4 py-3 border-2 text-sm font-medium"
               style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
             <div>
