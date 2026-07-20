@@ -446,7 +446,7 @@ export default function AdminDashboard() {
 
         {/* SUMMARY TAB */}
         {tab === 'summary' && (() => {
-          const workOrders = orders.filter(o => o.status === 'confirmed' || o.status === 'ready')
+          const workOrders = orders.filter(o => o.status === 'pending' || o.status === 'confirmed' || o.status === 'ready')
           const soldOrders = orders.filter(o => o.status !== 'cancelled' && o.status !== 'pending')
 
           // Lifetime recipe breakdown (completed + confirmed + ready)
@@ -506,19 +506,28 @@ export default function AdminDashboard() {
               </div>
 
               {/* Active orders header */}
-              {workOrders.length > 0 && (
-                <div className="rounded-2xl p-4 border-2 flex items-center justify-between"
-                  style={{ background: '#d6e8ff', borderColor: '#a8caff' }}>
-                  <span className="font-bold text-base" style={{ color: '#1a5eb8' }}>กำลังดำเนินการ</span>
-                  <span className="text-3xl font-black" style={{ color: '#1a5eb8' }}>
-                    {workOrders.reduce((s, o) => s + o.quantity, 0)} ชิ้น
-                  </span>
-                </div>
-              )}
+              {workOrders.length > 0 && (() => {
+                const pendingTotal = workOrders.filter(o => o.status === 'pending').reduce((s, o) => s + o.quantity, 0)
+                return (
+                  <div className="rounded-2xl p-4 border-2 flex items-center justify-between"
+                    style={{ background: '#d6e8ff', borderColor: '#a8caff' }}>
+                    <div>
+                      <span className="font-bold text-base" style={{ color: '#1a5eb8' }}>ต้องทำทั้งหมด</span>
+                      {pendingTotal > 0 && (
+                        <p className="text-xs font-semibold" style={{ color: '#c0392b' }}>รอยืนยัน {pendingTotal} ชิ้น</p>
+                      )}
+                    </div>
+                    <span className="text-3xl font-black" style={{ color: '#1a5eb8' }}>
+                      {workOrders.reduce((s, o) => s + o.quantity, 0)} ชิ้น
+                    </span>
+                  </div>
+                )
+              })()}
 
               {sortedDates.map(date => {
                 const dayOrders = byDate.get(date)!
                 const totalPieces = dayOrders.reduce((s, o) => s + o.quantity, 0)
+                const pendingPieces = dayOrders.filter(o => o.status === 'pending').reduce((s, o) => s + o.quantity, 0)
 
                 // Build combinations (supports multi-item orders)
                 const combos = new Map<string, { label: string; count: number }>()
@@ -548,8 +557,15 @@ export default function AdminDashboard() {
                       <span className="font-black text-base" style={{ color: '#1a5eb8' }}>
                         📅 {new Date(date + 'T00:00:00').toLocaleDateString('th-TH', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
                       </span>
-                      <span className="text-2xl font-black" style={{ color: '#1a5eb8' }}>
-                        {totalPieces} ชิ้น
+                      <span className="text-right">
+                        <span className="text-2xl font-black block" style={{ color: '#1a5eb8' }}>
+                          {totalPieces} ชิ้น
+                        </span>
+                        {pendingPieces > 0 && (
+                          <span className="text-xs font-bold block" style={{ color: '#c0392b' }}>
+                            รอยืนยัน {pendingPieces} ชิ้น
+                          </span>
+                        )}
                       </span>
                     </div>
 
@@ -591,6 +607,10 @@ export default function AdminDashboard() {
                               <div className="flex items-center gap-2">
                                 <span className="font-black">×{o.quantity}</span>
                                 <span className="font-semibold truncate flex-1">{o.customer_name}</span>
+                                <span className="text-xs font-bold rounded-full px-2 py-0.5 shrink-0"
+                                  style={{ background: STATUS_COLORS[o.status].bg, color: STATUS_COLORS[o.status].text }}>
+                                  {ORDER_STATUS_LABEL[o.status]}
+                                </span>
                               </div>
                               {getOrderItems(o).map((it, ii) => (
                                 <p key={ii} className="ml-5" style={{ color: '#7a4a4b' }}>
