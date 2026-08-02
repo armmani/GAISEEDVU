@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { sendTelegram } from '@/lib/telegram'
-import { PRICE_PER_PIECE, itemLabel, type OrderItem } from '@/lib/types'
+import { PRICE_PER_PIECE, itemLabel, itemsTotal, type OrderItem } from '@/lib/types'
 
 
 const supabaseAdmin = createClient(
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
     }
 
     const totalQty = (items as OrderItem[]).reduce((s, i) => s + i.quantity, 0)
-    const calculatedTotal = totalQty * pricePerPiece
+    const calculatedTotal = itemsTotal(items as OrderItem[], pricePerPiece)
     const first = items[0] as OrderItem
 
     const { data, error } = await supabaseAdmin

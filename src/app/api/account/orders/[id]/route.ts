@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createClient as createServerClient } from '@/lib/supabase/server'
-import { PRICE_PER_PIECE, type OrderItem } from '@/lib/types'
+import { PRICE_PER_PIECE, itemsTotal, type OrderItem } from '@/lib/types'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -69,7 +69,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (pricing) pricePerPiece = pricing.price_per_piece
 
   const totalQty = (items as OrderItem[]).reduce((s, i) => s + i.quantity, 0)
-  const calculatedTotal = totalQty * pricePerPiece
+  const calculatedTotal = itemsTotal(items as OrderItem[], pricePerPiece)
   const first = items[0] as OrderItem
 
   const { data, error } = await supabaseAdmin

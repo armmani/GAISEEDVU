@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { ShoppingBag, MapPin, Truck, Minus, Plus, X } from 'lucide-react'
-import { PICKUP_LOCATIONS, PRICE_PER_PIECE, TIME_SLOTS, PEPPER_LEVEL_LABEL, getOrderItems, type DeliveryType, type PickupLocation, type OrderItem, type PepperLevel } from '@/lib/types'
+import { PICKUP_LOCATIONS, PRICE_PER_PIECE, TIME_SLOTS, PEPPER_LEVEL_LABEL, getOrderItems, halfPricePerPiece, itemsTotal, type DeliveryType, type PickupLocation, type OrderItem, type PepperLevel } from '@/lib/types'
 import BottomNav from '@/components/BottomNav'
 import dynamic from 'next/dynamic'
 
@@ -19,10 +19,10 @@ function getMinDate() {
   return `${y}-${m}-${day}`
 }
 
-const defaultItem = (): OrderItem => ({ quantity: 1, pepper_level: 'normal', sesame_oil: false, no_salt: false })
+const defaultItem = (): OrderItem => ({ quantity: 1, pepper_level: 'normal', sesame_oil: false, no_salt: false, half: false })
 
-function ItemCard({ item, idx, total, onChange, onRemove }: {
-  item: OrderItem; idx: number; total: number
+function ItemCard({ item, idx, total, pricePerPiece, onChange, onRemove }: {
+  item: OrderItem; idx: number; total: number; pricePerPiece: number
   onChange: (patch: Partial<OrderItem>) => void
   onRemove: () => void
 }) {
@@ -100,6 +100,20 @@ function ItemCard({ item, idx, total, onChange, onRemove }: {
           <span className="text-xs font-semibold" style={{ color: '#4a2728' }}>ไม่ใส่เกลือ</span>
         </button>
       </div>
+
+      {/* Half breast 60/40 */}
+      <button type="button" onClick={() => onChange({ half: !item.half })}
+        className="flex items-center gap-2 w-full rounded-lg px-3 py-2 border-2 text-left transition-all"
+        style={{ borderColor: item.half ? '#4a2728' : '#e8c4c4', background: item.half ? '#f2dada' : 'white' }}>
+        <div className="w-4 h-4 rounded border-2 flex items-center justify-center shrink-0"
+          style={{ borderColor: '#4a2728', background: item.half ? '#4a2728' : 'white' }}>
+          {item.half && <svg viewBox="0 0 12 12" className="w-2.5 h-2.5" fill="none">
+            <path d="M2 6l3 3 5-5" stroke="#f2dada" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>}
+        </div>
+        <span className="text-xs font-semibold flex-1" style={{ color: '#4a2728' }}>อกไก่คนละครึ่ง 60/40</span>
+        <span className="text-xs font-bold" style={{ color: '#c0392b' }}>ชิ้นละ {halfPricePerPiece(pricePerPiece)} บาท</span>
+      </button>
     </div>
   )
 }
@@ -117,7 +131,7 @@ export default function OrderPage() {
   const [form, setForm] = useState({ customer_name: '', phone: '', delivery_address: '', pickup_date: '', recipient_name: '', recipient_phone: '', recipient_line_id: '', note: '' })
 
   const totalQty = items.reduce((s, i) => s + i.quantity, 0)
-  const total = totalQty * pricePerPiece
+  const total = itemsTotal(items, pricePerPiece)
 
   useEffect(() => {
     fetch('/api/account/pricing').then(r => r.json()).then(d => { if (d.price_per_piece) setPricePerPiece(d.price_per_piece) }).catch(() => {})
@@ -376,7 +390,7 @@ export default function OrderPage() {
           <div className="rounded-2xl p-5 border-2 space-y-3" style={{ background: 'white', borderColor: '#e8c4c4' }}>
             <h3 className="font-bold text-lg" style={{ color: '#4a2728' }}>สูตรและจำนวน</h3>
             {items.map((item, idx) => (
-              <ItemCard key={idx} item={item} idx={idx} total={items.length}
+              <ItemCard key={idx} item={item} idx={idx} total={items.length} pricePerPiece={pricePerPiece}
                 onChange={patch => updateItem(idx, patch)}
                 onRemove={() => setItems(prev => prev.filter((_, i) => i !== idx))} />
             ))}

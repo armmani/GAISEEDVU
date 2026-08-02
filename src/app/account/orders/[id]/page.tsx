@@ -26,7 +26,7 @@ function getMinDate() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-const defaultItem = (): OrderItem => ({ quantity: 1, pepper_level: 'normal', sesame_oil: false, no_salt: false })
+const defaultItem = (): OrderItem => ({ quantity: 1, pepper_level: 'normal', sesame_oil: false, no_salt: false, half: false })
 
 function ItemEditor({ item, idx, total, onChange, onRemove }: {
   item: OrderItem; idx: number; total: number
@@ -90,6 +90,17 @@ function ItemEditor({ item, idx, total, onChange, onRemove }: {
           <span className="text-xs font-semibold" style={{ color: '#4a2728' }}>ไม่ใส่เกลือ</span>
         </button>
       </div>
+      <button type="button" onClick={() => onChange({ half: !item.half })}
+        className="flex items-center gap-1.5 w-full rounded-lg px-2 py-1.5 border-2 text-left transition-all"
+        style={{ borderColor: item.half ? '#4a2728' : '#e8c4c4', background: item.half ? '#f2dada' : 'white' }}>
+        <div className="w-3.5 h-3.5 rounded border-2 flex items-center justify-center shrink-0"
+          style={{ borderColor: '#4a2728', background: item.half ? '#4a2728' : 'white' }}>
+          {item.half && <svg viewBox="0 0 12 12" className="w-2 h-2" fill="none">
+            <path d="M2 6l3 3 5-5" stroke="#f2dada" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>}
+        </div>
+        <span className="text-xs font-semibold" style={{ color: '#4a2728' }}>อกไก่คนละครึ่ง 60/40</span>
+      </button>
     </div>
   )
 }

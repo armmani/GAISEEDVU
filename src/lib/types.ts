@@ -9,6 +9,7 @@ export interface OrderItem {
   pepper_level: PepperLevel
   sesame_oil: boolean
   no_salt: boolean
+  half: boolean
 }
 
 export interface Order {
@@ -66,6 +67,19 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
 
 export const PRICE_PER_PIECE = 65
 
+// อกไก่คนละครึ่ง 60/40: 60% ของราคาปกติ ปัดเศษขึ้นให้หาร 5 ลงตัว
+export function halfPricePerPiece(pricePerPiece: number): number {
+  return Math.ceil((pricePerPiece * 0.6) / 5) * 5
+}
+
+export function itemUnitPrice(item: Pick<OrderItem, 'half'>, pricePerPiece: number): number {
+  return item.half ? halfPricePerPiece(pricePerPiece) : pricePerPiece
+}
+
+export function itemsTotal(items: OrderItem[], pricePerPiece: number): number {
+  return items.reduce((s, it) => s + it.quantity * itemUnitPrice(it, pricePerPiece), 0)
+}
+
 // Orders created before the pepper_level migration store items as { no_pepper: boolean }
 type LegacyOrderItem = Partial<OrderItem> & { quantity: number; no_pepper?: boolean }
 
@@ -78,11 +92,13 @@ export function getOrderItems(order: Order): OrderItem[] {
     pepper_level: it.pepper_level ?? (it.no_pepper ? 'none' : 'normal'),
     sesame_oil: it.sesame_oil ?? false,
     no_salt: it.no_salt ?? false,
+    half: it.half ?? false,
   }))
 }
 
 export function itemLabel(item: OrderItem): string {
   const parts = [
+    item.half ? 'อกไก่คนละครึ่ง 60/40' : null,
     item.pepper_level !== 'normal' ? PEPPER_LEVEL_LABEL[item.pepper_level] : null,
     item.no_salt ? 'ไม่ใส่เกลือ' : null,
     item.sesame_oil ? 'เพิ่มน้ำมันงา' : null,
