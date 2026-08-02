@@ -3,12 +3,13 @@ export type PickupLocation = 'donmueang' | 'siam' | 'chula'
 export type OrderStatus = 'pending' | 'confirmed' | 'ready' | 'completed' | 'cancelled'
 export type SaltLevel = 'less' | 'normal' | 'more'
 export type PepperLevel = 'normal' | 'less' | 'none'
+export type ItemSaltLevel = 'normal' | 'less' | 'none'
 
 export interface OrderItem {
   quantity: number
   pepper_level: PepperLevel
   sesame_oil: boolean
-  no_salt: boolean
+  salt_level: ItemSaltLevel
   half: boolean
 }
 
@@ -51,6 +52,12 @@ export const PEPPER_LEVEL_LABEL: Record<PepperLevel, string> = {
   none: 'ไม่ใส่พริกไท',
 }
 
+export const ITEM_SALT_LEVEL_LABEL: Record<ItemSaltLevel, string> = {
+  normal: 'เกลือปกติ',
+  less: 'ลดเกลือ',
+  none: 'ไม่ใส่เกลือ',
+}
+
 export const PICKUP_LOCATIONS: Record<PickupLocation, string> = {
   donmueang: 'ดอนเมือง — ร้านแลนด์บาร์ก คลินิกแอนด์เพทชอป',
   siam: 'สยาม — สยามสแควร์',
@@ -80,8 +87,8 @@ export function itemsTotal(items: OrderItem[], pricePerPiece: number): number {
   return items.reduce((s, it) => s + it.quantity * itemUnitPrice(it, pricePerPiece), 0)
 }
 
-// Orders created before the pepper_level migration store items as { no_pepper: boolean }
-type LegacyOrderItem = Partial<OrderItem> & { quantity: number; no_pepper?: boolean }
+// Legacy items may store { no_pepper: boolean } (pre-pepper_level) or { no_salt: boolean } (pre-salt_level)
+type LegacyOrderItem = Partial<OrderItem> & { quantity: number; no_pepper?: boolean; no_salt?: boolean }
 
 export function getOrderItems(order: Order): OrderItem[] {
   const raw: LegacyOrderItem[] = (order.items && order.items.length > 0)
@@ -91,7 +98,7 @@ export function getOrderItems(order: Order): OrderItem[] {
     quantity: it.quantity,
     pepper_level: it.pepper_level ?? (it.no_pepper ? 'none' : 'normal'),
     sesame_oil: it.sesame_oil ?? false,
-    no_salt: it.no_salt ?? false,
+    salt_level: it.salt_level ?? (it.no_salt ? 'none' : 'normal'),
     half: it.half ?? false,
   }))
 }
@@ -100,7 +107,7 @@ export function itemLabel(item: OrderItem): string {
   const parts = [
     item.half ? 'อกไก่คนละครึ่ง 60/40' : null,
     item.pepper_level !== 'normal' ? PEPPER_LEVEL_LABEL[item.pepper_level] : null,
-    item.no_salt ? 'ไม่ใส่เกลือ' : null,
+    item.salt_level !== 'normal' ? ITEM_SALT_LEVEL_LABEL[item.salt_level] : null,
     item.sesame_oil ? 'เพิ่มน้ำมันงา' : null,
   ].filter(Boolean)
   return parts.length > 0 ? parts.join(' · ') : 'สูตรปกติ'

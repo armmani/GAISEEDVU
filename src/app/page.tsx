@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { ShoppingBag, MapPin, Truck, Minus, Plus, X } from 'lucide-react'
-import { PICKUP_LOCATIONS, PRICE_PER_PIECE, TIME_SLOTS, PEPPER_LEVEL_LABEL, getOrderItems, halfPricePerPiece, itemsTotal, type DeliveryType, type PickupLocation, type OrderItem, type PepperLevel } from '@/lib/types'
+import { PICKUP_LOCATIONS, PRICE_PER_PIECE, TIME_SLOTS, PEPPER_LEVEL_LABEL, ITEM_SALT_LEVEL_LABEL, getOrderItems, halfPricePerPiece, itemsTotal, type DeliveryType, type PickupLocation, type OrderItem, type PepperLevel, type ItemSaltLevel } from '@/lib/types'
 import BottomNav from '@/components/BottomNav'
 import dynamic from 'next/dynamic'
 
@@ -19,7 +19,7 @@ function getMinDate() {
   return `${y}-${m}-${day}`
 }
 
-const defaultItem = (): OrderItem => ({ quantity: 1, pepper_level: 'normal', sesame_oil: false, no_salt: false, half: false })
+const defaultItem = (): OrderItem => ({ quantity: 1, pepper_level: 'normal', sesame_oil: false, salt_level: 'normal', half: false })
 
 function ItemCard({ item, idx, total, pricePerPiece, onChange, onRemove }: {
   item: OrderItem; idx: number; total: number; pricePerPiece: number
@@ -60,8 +60,8 @@ function ItemCard({ item, idx, total, pricePerPiece, onChange, onRemove }: {
       {/* Pepper level */}
       <div>
         <span className="text-xs font-semibold block mb-1.5" style={{ color: '#7a4a4b' }}>พริกไท</span>
-        <div className="grid grid-cols-3 gap-1.5">
-          {(['normal', 'less', 'none'] as PepperLevel[]).map(level => (
+        <div className="grid grid-cols-2 gap-1.5">
+          {(['normal', 'none'] as PepperLevel[]).map(level => (
             <button key={level} type="button" onClick={() => onChange({ pepper_level: level })}
               className="rounded-lg px-2 py-1.5 border-2 text-xs font-semibold transition-all"
               style={{
@@ -75,31 +75,36 @@ function ItemCard({ item, idx, total, pricePerPiece, onChange, onRemove }: {
         </div>
       </div>
 
-      {/* Sesame oil & no salt */}
-      <div className="grid grid-cols-2 gap-1.5">
-        <button type="button" onClick={() => onChange({ sesame_oil: !item.sesame_oil })}
-          className="flex items-center gap-2 rounded-lg px-3 py-2 border-2 text-left transition-all"
-          style={{ borderColor: item.sesame_oil ? '#4a2728' : '#e8c4c4', background: item.sesame_oil ? '#f2dada' : 'white' }}>
-          <div className="w-4 h-4 rounded border-2 flex items-center justify-center shrink-0"
-            style={{ borderColor: '#4a2728', background: item.sesame_oil ? '#4a2728' : 'white' }}>
-            {item.sesame_oil && <svg viewBox="0 0 12 12" className="w-2.5 h-2.5" fill="none">
-              <path d="M2 6l3 3 5-5" stroke="#f2dada" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>}
-          </div>
-          <span className="text-xs font-semibold" style={{ color: '#4a2728' }}>เพิ่มน้ำมันงา</span>
-        </button>
-        <button type="button" onClick={() => onChange({ no_salt: !item.no_salt })}
-          className="flex items-center gap-2 rounded-lg px-3 py-2 border-2 text-left transition-all"
-          style={{ borderColor: item.no_salt ? '#4a2728' : '#e8c4c4', background: item.no_salt ? '#f2dada' : 'white' }}>
-          <div className="w-4 h-4 rounded border-2 flex items-center justify-center shrink-0"
-            style={{ borderColor: '#4a2728', background: item.no_salt ? '#4a2728' : 'white' }}>
-            {item.no_salt && <svg viewBox="0 0 12 12" className="w-2.5 h-2.5" fill="none">
-              <path d="M2 6l3 3 5-5" stroke="#f2dada" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>}
-          </div>
-          <span className="text-xs font-semibold" style={{ color: '#4a2728' }}>ไม่ใส่เกลือ</span>
-        </button>
+      {/* Salt level */}
+      <div>
+        <span className="text-xs font-semibold block mb-1.5" style={{ color: '#7a4a4b' }}>เกลือ</span>
+        <div className="grid grid-cols-3 gap-1.5">
+          {(['normal', 'less', 'none'] as ItemSaltLevel[]).map(level => (
+            <button key={level} type="button" onClick={() => onChange({ salt_level: level })}
+              className="rounded-lg px-2 py-1.5 border-2 text-xs font-semibold transition-all"
+              style={{
+                borderColor: item.salt_level === level ? '#4a2728' : '#e8c4c4',
+                background: item.salt_level === level ? '#4a2728' : 'white',
+                color: item.salt_level === level ? '#f2dada' : '#4a2728',
+              }}>
+              {ITEM_SALT_LEVEL_LABEL[level]}
+            </button>
+          ))}
+        </div>
       </div>
+
+      {/* Sesame oil */}
+      <button type="button" onClick={() => onChange({ sesame_oil: !item.sesame_oil })}
+        className="flex items-center gap-2 w-full rounded-lg px-3 py-2 border-2 text-left transition-all"
+        style={{ borderColor: item.sesame_oil ? '#4a2728' : '#e8c4c4', background: item.sesame_oil ? '#f2dada' : 'white' }}>
+        <div className="w-4 h-4 rounded border-2 flex items-center justify-center shrink-0"
+          style={{ borderColor: '#4a2728', background: item.sesame_oil ? '#4a2728' : 'white' }}>
+          {item.sesame_oil && <svg viewBox="0 0 12 12" className="w-2.5 h-2.5" fill="none">
+            <path d="M2 6l3 3 5-5" stroke="#f2dada" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>}
+        </div>
+        <span className="text-xs font-semibold" style={{ color: '#4a2728' }}>เพิ่มน้ำมันงา</span>
+      </button>
 
       {/* Half breast 60/40 */}
       <button type="button" onClick={() => onChange({ half: !item.half })}
