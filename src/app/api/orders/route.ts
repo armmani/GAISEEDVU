@@ -14,6 +14,7 @@ export async function POST(req: NextRequest) {
   try {
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'กรุณาเข้าสู่ระบบก่อนสั่งซื้อ' }, { status: 401 })
 
     const body = await req.json()
     const { customer_name, phone, delivery_type, pickup_location, delivery_address, pickup_date, pickup_time, recipient_name, recipient_phone, recipient_line_id, note, items } = body
@@ -47,15 +48,13 @@ export async function POST(req: NextRequest) {
     }
 
     let pricePerPiece = PRICE_PER_PIECE
-    if (user) {
-      const now = new Date().toISOString()
-      const { data: pricing } = await supabaseAdmin
-        .from('customer_pricing').select('price_per_piece')
-        .eq('user_id', user.id)
-        .or(`expires_at.is.null,expires_at.gt.${now}`)
-        .order('created_at', { ascending: false }).limit(1).maybeSingle()
-      if (pricing) pricePerPiece = pricing.price_per_piece
-    }
+    const now = new Date().toISOString()
+    const { data: pricing } = await supabaseAdmin
+      .from('customer_pricing').select('price_per_piece')
+      .eq('user_id', user.id)
+      .or(`expires_at.is.null,expires_at.gt.${now}`)
+      .order('created_at', { ascending: false }).limit(1).maybeSingle()
+    if (pricing) pricePerPiece = pricing.price_per_piece
 
     const totalQty = (items as OrderItem[]).reduce((s, i) => s + i.quantity, 0)
     const calculatedTotal = itemsTotal(items as OrderItem[], pricePerPiece)
@@ -82,7 +81,7 @@ export async function POST(req: NextRequest) {
         sesame_oil: !!first.sesame_oil,
         items,
         status: 'pending',
-        user_id: user?.id ?? null,
+        user_id: user.id,
       })
       .select('id').single()
 
