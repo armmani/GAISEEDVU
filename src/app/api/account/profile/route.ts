@@ -23,17 +23,24 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const body = await req.json()
-  const { user_id, display_name, phone, default_address, telegram_chat_id } = body
+  const { display_name, phone, default_address, telegram_chat_id } = body
+
+  const { data: existing } = await supabaseAdmin
+    .from('profiles').select('id').eq('id', user.id).maybeSingle()
 
   const { error } = await supabaseAdmin
     .from('profiles')
-    .upsert({ id: user_id, display_name, phone, default_address, telegram_chat_id: telegram_chat_id || null, updated_at: new Date().toISOString() })
+    .upsert({ id: user.id, display_name, phone, default_address, telegram_chat_id: telegram_chat_id || null, updated_at: new Date().toISOString() })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID
-  if (adminChatId) {
+  if (adminChatId && !existing) {
     await sendTelegram(adminChatId, `🆕 <b>สมาชิกใหม่!</b>\n👤 ${display_name || '—'}\n📞 ${phone || '—'}`)
   }
 

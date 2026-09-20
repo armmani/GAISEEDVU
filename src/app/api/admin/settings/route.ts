@@ -14,6 +14,8 @@ async function checkAdmin() {
 }
 
 export async function GET() {
+  if (!await checkAdmin()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { data } = await supabaseAdmin.from('settings').select('*').single()
   return NextResponse.json(data ?? { is_accepting_orders: true })
 }

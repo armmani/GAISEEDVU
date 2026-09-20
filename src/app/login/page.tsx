@@ -61,7 +61,6 @@ export default function LoginPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            user_id: data.user.id,
             display_name: form.display_name.trim(),
             phone: form.phone.trim(),
           }),

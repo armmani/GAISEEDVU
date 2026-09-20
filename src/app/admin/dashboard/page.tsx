@@ -390,7 +390,7 @@ export default function AdminDashboard() {
 
                     <div className="flex items-center justify-between pt-0.5">
                       {order.payment_slip_url ? (
-                        <a href={order.payment_slip_url} target="_blank" rel="noopener noreferrer"
+                        <a href={`/api/orders/${order.id}/slip`} target="_blank" rel="noopener noreferrer"
                           className="flex items-center gap-1 font-semibold" style={{ color: '#1a7a3c' }}>
                           <ExternalLink size={12} /> ดูสลิป
                         </a>

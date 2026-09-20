@@ -453,7 +453,7 @@ export default function OrderDetailPage() {
 
         {/* Payment */}
         {order.payment_slip_url ? (
-          <a href={order.payment_slip_url} target="_blank" rel="noopener noreferrer"
+          <a href={`/api/orders/${order.id}/slip`} target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-2 rounded-2xl p-4 border-2 text-sm font-semibold"
             style={{ background: 'white', borderColor: '#e8c4c4', color: '#4a2728' }}>
             <ExternalLink size={16} /> ดูสลิปโอนเงิน
