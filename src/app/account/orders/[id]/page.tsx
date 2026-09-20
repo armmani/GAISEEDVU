@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, MapPin, Truck, ExternalLink, Pencil, X, Minus, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, TIME_SLOTS, PEPPER_LEVEL_LABEL, ITEM_SALT_LEVEL_LABEL, getOrderItems, itemLabel, type Order, type OrderStatus, type OrderItem, type DeliveryType, type PickupLocation, type PepperLevel, type ItemSaltLevel } from '@/lib/types'
+import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, TIME_SLOTS, PEPPER_LEVEL_LABEL, ITEM_SALT_LEVEL_LABEL, getOrderItems, itemLabel, formatOrderedAt, type Order, type OrderStatus, type OrderItem, type DeliveryType, type PickupLocation, type PepperLevel, type ItemSaltLevel } from '@/lib/types'
 import ChickenLoader from '@/components/ChickenLoader'
 import dynamic from 'next/dynamic'
 
@@ -399,6 +399,11 @@ export default function OrderDetailPage() {
                 <span className="font-bold" style={{ color: '#4a2728' }}>×{it.quantity} ชิ้น</span>
               </div>
             ))}
+          </div>
+
+          <div className="flex justify-between">
+            <span style={{ color: '#7a4a4b' }}>สั่งเมื่อ</span>
+            <span className="font-bold" style={{ color: '#4a2728' }}>{formatOrderedAt(order.created_at)}</span>
           </div>
 
           <div className="flex justify-between">

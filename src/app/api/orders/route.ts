@@ -10,6 +10,16 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+const DUPLICATE_WINDOW_MS = 5 * 60 * 1000
+
+function itemsSignature(items: OrderItem[] | null) {
+  if (!items) return ''
+  return items
+    .map(i => `${i.quantity}|${i.pepper_level ?? ''}|${i.salt_level ?? ''}|${i.sesame_oil ? 1 : 0}|${i.half ? 1 : 0}`)
+    .sort()
+    .join(';')
+}
+
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createServerClient()
@@ -59,6 +69,26 @@ export async function POST(req: NextRequest) {
     const totalQty = (items as OrderItem[]).reduce((s, i) => s + i.quantity, 0)
     const calculatedTotal = itemsTotal(items as OrderItem[], pricePerPiece)
     const first = items[0] as OrderItem
+
+    // A second identical order placed within minutes is a double submit, not a
+    // real second order. Hand back the one already created instead of making
+    // another; a genuine repeat can still be placed after the window.
+    const since = new Date(Date.now() - DUPLICATE_WINDOW_MS).toISOString()
+    const { data: recent } = await supabaseAdmin
+      .from('orders')
+      .select('id, pickup_date, pickup_time, delivery_type, total_amount, items')
+      .eq('user_id', user.id)
+      .eq('status', 'pending')
+      .gte('created_at', since)
+
+    const duplicate = recent?.find(r =>
+      r.pickup_date === pickup_date &&
+      (r.pickup_time ?? null) === (pickup_time || null) &&
+      r.delivery_type === delivery_type &&
+      r.total_amount === calculatedTotal &&
+      itemsSignature(r.items as OrderItem[] | null) === itemsSignature(items as OrderItem[])
+    )
+    if (duplicate) return NextResponse.json({ id: duplicate.id, duplicate: true })
 
     const { data, error } = await supabaseAdmin
       .from('orders')

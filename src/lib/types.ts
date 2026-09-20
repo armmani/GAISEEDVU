@@ -103,6 +103,50 @@ export function getOrderItems(order: Order): OrderItem[] {
   }))
 }
 
+// created_at is UTC; the shop reads these as Thailand local time.
+export function formatOrderedAt(iso: string): string {
+  return new Date(iso).toLocaleString('th-TH', {
+    timeZone: 'Asia/Bangkok',
+    day: 'numeric', month: 'short', year: '2-digit',
+    hour: '2-digit', minute: '2-digit',
+  })
+}
+
+export function itemsSignature(items: OrderItem[]): string {
+  return items
+    .map(i => `${i.quantity}|${i.pepper_level}|${i.salt_level}|${i.sesame_oil ? 1 : 0}|${i.half ? 1 : 0}`)
+    .sort()
+    .join(';')
+}
+
+// Orders the same customer placed for the same pickup date with the same
+// contents. Returns, for each such order id, how long after the first one of
+// the set it arrived — small gaps mean a double submit, large ones a genuine
+// repeat order.
+export function findDuplicates(orders: Order[]): Map<string, { gapMs: number; siblingId: string }> {
+  const groups = new Map<string, Order[]>()
+  for (const o of orders) {
+    if (!o.user_id || o.status === 'cancelled') continue
+    const k = [o.user_id, o.pickup_date, o.delivery_type, o.total_amount, itemsSignature(getOrderItems(o))].join('#')
+    const g = groups.get(k)
+    if (g) g.push(o); else groups.set(k, [o])
+  }
+
+  const flagged = new Map<string, { gapMs: number; siblingId: string }>()
+  for (const g of groups.values()) {
+    if (g.length < 2) continue
+    g.sort((a, b) => a.created_at.localeCompare(b.created_at))
+    const first = g[0]
+    for (const o of g.slice(1)) {
+      flagged.set(o.id, {
+        gapMs: new Date(o.created_at).getTime() - new Date(first.created_at).getTime(),
+        siblingId: first.id,
+      })
+    }
+  }
+  return flagged
+}
+
 export function itemLabel(item: OrderItem): string {
   const parts = [
     item.half ? 'อกไก่คนละครึ่ง 60/40' : null,

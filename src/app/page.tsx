@@ -190,10 +190,13 @@ export default function OrderPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'เกิดข้อผิดพลาด')
+      if (data.duplicate) toast('รายการนี้สั่งไปแล้วเมื่อสักครู่ พาไปที่ออเดอร์เดิมนะคะ 🐔', { icon: 'ℹ️' })
+      // Stay disabled through the navigation — re-enabling here puts an active
+      // submit button back under the user's finger while /order/[id] loads,
+      // which is how the same order got sent twice a few seconds apart.
       router.push(`/order/${data.id}`)
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด กรุณาลองใหม่')
-    } finally {
       setLoading(false)
     }
   }

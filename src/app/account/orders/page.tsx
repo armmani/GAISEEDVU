@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ChevronRight, MapPin, Truck, RotateCcw } from 'lucide-react'
-import { ORDER_STATUS_LABEL, getOrderItems, itemLabel, type Order, type OrderStatus } from '@/lib/types'
+import { ORDER_STATUS_LABEL, getOrderItems, itemLabel, formatOrderedAt, type Order, type OrderStatus } from '@/lib/types'
 import BottomNav from '@/components/BottomNav'
 import ChickenLoader from '@/components/ChickenLoader'
 
@@ -44,6 +44,9 @@ function OrderCard({ order, showReorder }: { order: Order; showReorder?: boolean
               <span>{new Date(order.pickup_date + 'T00:00:00').toLocaleDateString('th-TH', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
               <span>·</span>
               <span className="font-semibold">{order.total_amount.toLocaleString()} บาท</span>
+            </div>
+            <div className="mt-1 text-xs" style={{ color: '#a08585' }}>
+              สั่งเมื่อ {formatOrderedAt(order.created_at)}
             </div>
           </div>
           <ChevronRight size={18} style={{ color: '#b89a9b' }} className="shrink-0 mt-1" />

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { MapPin, Truck, ExternalLink, RefreshCw, ToggleLeft, ToggleRight, LogOut, Users, ClipboardList, Tag, X, ChefHat, CalendarOff } from 'lucide-react'
-import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, PRICE_PER_PIECE, getOrderItems, itemLabel, type Order, type OrderStatus } from '@/lib/types'
+import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, PRICE_PER_PIECE, getOrderItems, itemLabel, formatOrderedAt, findDuplicates, type Order, type OrderStatus } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 
 const STATUS_COLORS: Record<OrderStatus, { bg: string; text: string }> = {
@@ -318,10 +318,19 @@ export default function AdminDashboard() {
               .filter(o => ['completed', 'cancelled'].includes(o.status))
               .sort((a, b) => b.pickup_date.localeCompare(a.pickup_date))
 
+            const duplicates = findDuplicates(orders)
+
             function OrderCard({ order }: { order: Order }) {
               const colors = STATUS_COLORS[order.status]
               const nextStatus = STATUS_FLOW[STATUS_FLOW.indexOf(order.status) + 1]
               const orderItems = getOrderItems(order)
+              const dup = duplicates.get(order.id)
+              const dupGap = dup && (
+                dup.gapMs < 60_000 ? `${Math.round(dup.gapMs / 1000)} วินาที`
+                  : dup.gapMs < 3_600_000 ? `${Math.round(dup.gapMs / 60_000)} นาที`
+                    : dup.gapMs < 86_400_000 ? `${Math.round(dup.gapMs / 3_600_000)} ชั่วโมง`
+                      : `${Math.round(dup.gapMs / 86_400_000)} วัน`
+              )
 
               return (
                 <div className="rounded-2xl border-2 overflow-hidden" style={{ background: 'white', borderColor: colors.bg === '#e2e3e5' ? '#e8c4c4' : colors.bg }}>
@@ -341,8 +350,18 @@ export default function AdminDashboard() {
                     </span>
                   </div>
 
+                  {dup && (
+                    <div className="px-4 py-1.5 text-xs font-bold flex items-center gap-1.5"
+                      style={{ background: '#fff3cd', color: '#8a6100' }}>
+                      ⚠️ อาจซ้ำกับ #{dup.siblingId.slice(0, 6).toUpperCase()} — สั่งห่างกัน {dupGap}
+                    </div>
+                  )}
+
                   {/* Details */}
                   <div className="px-4 pb-3 space-y-1.5 text-xs" style={{ color: '#4a2728' }}>
+                    <div style={{ color: '#a08585' }}>
+                      🕐 สั่งเมื่อ {formatOrderedAt(order.created_at)}
+                    </div>
                     <div className="flex items-center gap-3">
                       <span className="font-black text-base">×{order.quantity}</span>
                       <span className="font-bold">{order.total_amount.toLocaleString()} บาท</span>
