@@ -232,7 +232,7 @@ export default function OrderPage() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-xl font-bold" style={{ color: '#4a2728' }}>Original เกลือพริกไท</h2>
-              <p className="text-sm mt-1" style={{ color: '#7a4a4b' }}>ไก่ซูวีด 200–300 กรัม/ชิ้น</p>
+              <p className="text-sm mt-1" style={{ color: '#7a4a4b' }}>ไก่ซูวีด 250 กรัม/ชิ้น (±10%)</p>
               {pricePerPiece !== PRICE_PER_PIECE ? (
                 <div className="mt-2 flex items-center gap-2 flex-wrap">
                   <p className="text-sm line-through" style={{ color: '#b09090' }}>ชิ้นละ {PRICE_PER_PIECE} บาท</p>
