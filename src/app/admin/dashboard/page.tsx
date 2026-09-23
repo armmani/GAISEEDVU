@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { MapPin, Truck, ExternalLink, RefreshCw, ToggleLeft, ToggleRight, LogOut, Users, ClipboardList, Tag, X, ChefHat, CalendarOff } from 'lucide-react'
+import { MapPin, Truck, ExternalLink, RefreshCw, ToggleLeft, ToggleRight, LogOut, Users, ClipboardList, Tag, X, ChefHat, CalendarOff, Trash2, AlertTriangle } from 'lucide-react'
 import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, PRICE_PER_PIECE, SIGNUP_CODE_PRICE, getOrderItems, itemLabel, formatOrderedAt, findDuplicates, type Order, type OrderStatus } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 
@@ -96,6 +96,8 @@ export default function AdminDashboard() {
   const [shop, setShop] = useState({ price_per_piece: PRICE_PER_PIECE, signup_code: '', signup_code_price: SIGNUP_CODE_PRICE })
   const [shopForm, setShopForm] = useState({ price_per_piece: '', signup_code: '', signup_code_price: '' })
   const [shopLoading, setShopLoading] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<CustomerSummary | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
   const [blockedDates, setBlockedDates] = useState<{ id: string; start_date: string; end_date: string; note: string | null }[]>([])
   const [newBlock, setNewBlock] = useState({ start_date: '', end_date: '', note: '' })
   const [editBlock, setEditBlock] = useState<{ id: string; start_date: string; end_date: string; note: string } | null>(null)
@@ -217,6 +219,23 @@ export default function AdminDashboard() {
       body: JSON.stringify({ id }),
     })
     toast.success('ลบวันหยุดแล้ว')
+    fetchData()
+  }
+
+  async function deleteCustomer() {
+    if (!deleteTarget?.userId) return
+    setDeleteLoading(true)
+    const res = await fetch('/api/admin/profiles', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: deleteTarget.userId }),
+    })
+    const d = await res.json().catch(() => ({}))
+    setDeleteLoading(false)
+    if (!res.ok) return toast.error(d.error || 'ลบไม่สำเร็จ')
+    toast.success(`ลบ ${deleteTarget.name} แล้ว`)
+    setDeleteTarget(null)
+    setExpandedCustomer(null)
     fetchData()
   }
 
@@ -890,6 +909,16 @@ export default function AdminDashboard() {
                           </div>
                         )
                       })}
+
+                      {c.userId && (
+                        <div className="px-4 py-3 border-t" style={{ borderColor: '#e8c4c4' }}>
+                          <button onClick={() => setDeleteTarget(c)}
+                            className="w-full flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold border-2"
+                            style={{ borderColor: '#f0b4b4', color: '#c0392b', background: 'white' }}>
+                            <Trash2 size={14} /> ลบลูกค้าออกจากระบบ
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1012,6 +1041,46 @@ export default function AdminDashboard() {
         )}
 
       </div>
+
+      {/* Delete customer confirmation */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: 'rgba(74, 39, 40, 0.5)' }}
+          onClick={() => !deleteLoading && setDeleteTarget(null)}>
+          <div className="w-full max-w-sm rounded-2xl p-5 space-y-4" style={{ background: 'white' }}
+            role="alertdialog" aria-modal="true" aria-labelledby="delete-title"
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-start gap-3">
+              <div className="rounded-full p-2 shrink-0" style={{ background: '#ffd6d6' }}>
+                <AlertTriangle size={20} style={{ color: '#c0392b' }} />
+              </div>
+              <div className="min-w-0">
+                <h3 id="delete-title" className="font-black text-base" style={{ color: '#4a2728' }}>ลบลูกค้าออกจากระบบ?</h3>
+                <p className="text-sm font-bold truncate" style={{ color: '#4a2728' }}>{deleteTarget.name}</p>
+                {deleteTarget.email && <p className="text-xs truncate" style={{ color: '#7a4a4b' }}>{deleteTarget.email}</p>}
+              </div>
+            </div>
+            <ul className="text-xs space-y-1 rounded-xl p-3" style={{ background: '#fff5f5', color: '#7a4a4b' }}>
+              <li>• บัญชี โปรไฟล์ และราคาพิเศษของลูกค้าจะถูกลบ <b style={{ color: '#c0392b' }}>กู้คืนไม่ได้</b></li>
+              <li>• ลูกค้าจะเข้าสู่ระบบไม่ได้อีก (สมัครใหม่ได้)</li>
+              {deleteTarget.totalOrders > 0 && (
+                <li>• ประวัติออเดอร์ {deleteTarget.totalOrders} รายการยังเก็บไว้เป็นยอดขาย และจะแสดงเป็นลูกค้าทั่วไป</li>
+              )}
+            </ul>
+            <div className="flex gap-2">
+              <button onClick={() => setDeleteTarget(null)} disabled={deleteLoading}
+                className="flex-1 rounded-xl py-2.5 text-sm font-bold border-2 disabled:opacity-50"
+                style={{ borderColor: '#e8c4c4', color: '#4a2728', background: 'white' }}>
+                ยกเลิก
+              </button>
+              <button onClick={deleteCustomer} disabled={deleteLoading}
+                className="flex-1 rounded-xl py-2.5 text-sm font-bold disabled:opacity-50"
+                style={{ background: '#c0392b', color: 'white' }}>
+                {deleteLoading ? 'กำลังลบ...' : 'ลบเลย'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

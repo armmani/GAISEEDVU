@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 
@@ -43,4 +43,34 @@ export async function GET() {
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
   return NextResponse.json(result)
+}
+
+// Removes the customer's account. Their orders stay as sales history but are
+// detached from the account, so they show up as a guest customer afterwards.
+export async function DELETE(req: NextRequest) {
+  if (!await checkAdmin()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { user_id } = await req.json()
+  if (typeof user_id !== 'string' || !user_id) {
+    return NextResponse.json({ error: 'user_id required' }, { status: 400 })
+  }
+
+  const { data: target } = await supabaseAdmin.auth.admin.getUserById(user_id)
+  if (!target?.user) return NextResponse.json({ error: 'ไม่พบผู้ใช้' }, { status: 404 })
+  if (target.user.email === process.env.ADMIN_EMAIL) {
+    return NextResponse.json({ error: 'ลบบัญชีแอดมินไม่ได้' }, { status: 400 })
+  }
+
+  const steps = await Promise.all([
+    supabaseAdmin.from('orders').update({ user_id: null }).eq('user_id', user_id),
+    supabaseAdmin.from('customer_pricing').delete().eq('user_id', user_id),
+    supabaseAdmin.from('profiles').delete().eq('id', user_id),
+  ])
+  const failed = steps.find(s => s.error)
+  if (failed?.error) return NextResponse.json({ error: failed.error.message }, { status: 500 })
+
+  const { error } = await supabaseAdmin.auth.admin.deleteUser(user_id)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  return NextResponse.json({ ok: true })
 }
