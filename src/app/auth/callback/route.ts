@@ -24,7 +24,8 @@ export async function GET(request: NextRequest) {
         .eq('id', data.user.id)
         .single()
 
-      if (!existing) {
+      const isNew = !existing
+      if (isNew) {
         const name = data.user.user_metadata?.full_name || data.user.user_metadata?.name || ''
         await supabaseAdmin.from('profiles').insert({
           id: data.user.id,
@@ -39,7 +40,9 @@ export async function GET(request: NextRequest) {
       }
 
       const isAdmin = data.user.email === process.env.ADMIN_EMAIL
-      return NextResponse.redirect(`${origin}${isAdmin ? '/admin/dashboard' : '/'}`)
+      // New sign-ups fill in phone and discount code before reaching the order page
+      const next = isAdmin ? '/admin/dashboard' : isNew ? '/welcome' : '/'
+      return NextResponse.redirect(`${origin}${next}`)
     }
   }
 
