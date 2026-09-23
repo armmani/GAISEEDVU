@@ -72,7 +72,9 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   cancelled: 'ยกเลิก',
 }
 
+// Fallbacks only — the live prices are in the settings table, set from the admin dashboard.
 export const PRICE_PER_PIECE = 65
+export const SIGNUP_CODE_PRICE = 60
 
 // อกไก่คนละครึ่ง 60/40: 60% ของราคาปกติ ปัดเศษขึ้นให้หาร 5 ลงตัว
 export function halfPricePerPiece(pricePerPiece: number): number {

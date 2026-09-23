@@ -16,6 +16,9 @@ export default function ProfilePage() {
   const [hasGoogle, setHasGoogle] = useState(false)
   const [form, setForm] = useState({ display_name: '', phone: '', default_address: '', telegram_chat_id: '' })
   const [pwForm, setPwForm] = useState({ newPassword: '', confirmPassword: '' })
+  const [pricing, setPricing] = useState<{ price_per_piece: number; base_price: number } | null>(null)
+  const [code, setCode] = useState('')
+  const [codeLoading, setCodeLoading] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -35,7 +38,33 @@ export default function ProfilePage() {
           telegram_chat_id: p.telegram_chat_id || '',
         })
       })
+    loadPricing()
   }, [])
+
+  function loadPricing() {
+    fetch('/api/account/pricing').then(r => r.json()).then(setPricing).catch(() => {})
+  }
+
+  async function handleRedeem(e: React.FormEvent) {
+    e.preventDefault()
+    setCodeLoading(true)
+    try {
+      const res = await fetch('/api/account/redeem-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      })
+      const d = await res.json()
+      if (!res.ok) throw new Error(d.error || 'ใช้โค้ดไม่สำเร็จ')
+      toast.success(d.result === 'already_special' ? 'คุณมีราคาพิเศษอยู่แล้ว' : 'ใช้โค้ดสำเร็จ ได้ราคาพิเศษแล้ว 🎉')
+      setCode('')
+      loadPricing()
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด')
+    } finally {
+      setCodeLoading(false)
+    }
+  }
 
   function set(field: string, value: string) {
     setForm(prev => ({ ...prev, [field]: value }))
@@ -188,6 +217,29 @@ export default function ProfilePage() {
             {loading ? 'กำลังบันทึก...' : 'บันทึก'}
           </button>
         </form>
+
+        {/* Discount code */}
+        <div className="rounded-2xl p-5 border-2 space-y-3 mt-4" style={{ background: 'white', borderColor: '#e8c4c4' }}>
+          <h3 className="font-bold text-lg" style={{ color: '#4a2728' }}>โค้ดส่วนลด</h3>
+          {pricing && pricing.price_per_piece < pricing.base_price ? (
+            <p className="text-sm" style={{ color: '#7a4a4b' }}>
+              คุณได้ราคาพิเศษ <b style={{ color: '#c0392b' }}>ชิ้นละ {pricing.price_per_piece} บาท</b>
+              {' '}(ปกติ {pricing.base_price} บาท) 🎉
+            </p>
+          ) : (
+            <form onSubmit={handleRedeem} className="flex gap-2">
+              <input type="text" value={code} onChange={e => setCode(e.target.value.toUpperCase())}
+                placeholder="ใส่โค้ดเพื่อรับราคาพิเศษ" autoCapitalize="characters"
+                className="flex-1 min-w-0 rounded-xl px-4 py-3 border-2 text-sm font-medium"
+                style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
+              <button type="submit" disabled={codeLoading || !code.trim()}
+                className="rounded-xl px-4 py-3 font-bold text-sm disabled:opacity-50"
+                style={{ background: '#4a2728', color: '#f2dada' }}>
+                {codeLoading ? '...' : 'ใช้โค้ด'}
+              </button>
+            </form>
+          )}
+        </div>
 
         {/* Change Password */}
         <form onSubmit={handleChangePassword} className="rounded-2xl p-5 border-2 space-y-4 mt-4"

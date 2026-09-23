@@ -12,7 +12,7 @@ export default function LoginPage() {
   const [tab, setTab] = useState<Tab>('login')
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
-  const [form, setForm] = useState({ email: '', password: '', display_name: '', phone: '' })
+  const [form, setForm] = useState({ email: '', password: '', display_name: '', phone: '', signup_code: '' })
   const supabase = createClient()
 
   async function handleGoogle() {
@@ -56,19 +56,24 @@ export default function LoginPage() {
         password: form.password,
       })
       if (error) throw error
+      let codeResult: string | null = null
       if (data.user) {
-        await fetch('/api/account/profile', {
+        const res = await fetch('/api/account/profile', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             display_name: form.display_name.trim(),
             phone: form.phone.trim(),
+            signup_code: form.signup_code.trim(),
           }),
         })
+        codeResult = (await res.json().catch(() => ({}))).code_result ?? null
         await supabase.auth.signOut()
       }
       toast.success('สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ')
-      setForm(prev => ({ ...prev, display_name: '', phone: '' }))
+      if (codeResult === 'applied') toast.success('ใช้โค้ดสำเร็จ ได้ราคาพิเศษแล้ว 🎉')
+      else if (codeResult === 'invalid') toast.error('โค้ดไม่ถูกต้อง — ใส่ใหม่ได้ที่หน้าโปรไฟล์')
+      setForm(prev => ({ ...prev, display_name: '', phone: '', signup_code: '' }))
       setTab('login')
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'สมัครสมาชิกไม่สำเร็จ')
@@ -202,6 +207,11 @@ export default function LoginPage() {
               <label className="block text-sm font-semibold mb-1" style={{ color: '#7a4a4b' }}>รหัสผ่าน *</label>
               <input type="password" value={form.password} onChange={e => set('password', e.target.value)}
                 placeholder="อย่างน้อย 6 ตัวอักษร" className={inputClass} style={inputStyle} />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-1" style={{ color: '#7a4a4b' }}>โค้ดส่วนลด (ถ้ามี)</label>
+              <input type="text" value={form.signup_code} onChange={e => set('signup_code', e.target.value.toUpperCase())}
+                placeholder="ใส่โค้ดเพื่อรับราคาพิเศษ" autoCapitalize="characters" className={inputClass} style={inputStyle} />
             </div>
             <button type="submit" disabled={loading || !form.email || !form.password}
               className="w-full rounded-xl py-3 font-bold text-sm disabled:opacity-50"

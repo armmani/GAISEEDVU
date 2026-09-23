@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { MapPin, Truck, ExternalLink, RefreshCw, ToggleLeft, ToggleRight, LogOut, Users, ClipboardList, Tag, X, ChefHat, CalendarOff } from 'lucide-react'
-import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, PRICE_PER_PIECE, getOrderItems, itemLabel, formatOrderedAt, findDuplicates, type Order, type OrderStatus } from '@/lib/types'
+import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, PRICE_PER_PIECE, SIGNUP_CODE_PRICE, getOrderItems, itemLabel, formatOrderedAt, findDuplicates, type Order, type OrderStatus } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 
 const STATUS_COLORS: Record<OrderStatus, { bg: string; text: string }> = {
@@ -93,6 +93,9 @@ export default function AdminDashboard() {
   const [pricingMap, setPricingMap] = useState<Record<string, CustomerPricing>>({})
   const [pricingForm, setPricingForm] = useState<{ userId: string; price: string; expires_at: string; note: string } | null>(null)
   const [pricingLoading, setPricingLoading] = useState(false)
+  const [shop, setShop] = useState({ price_per_piece: PRICE_PER_PIECE, signup_code: '', signup_code_price: SIGNUP_CODE_PRICE })
+  const [shopForm, setShopForm] = useState({ price_per_piece: '', signup_code: '', signup_code_price: '' })
+  const [shopLoading, setShopLoading] = useState(false)
   const [blockedDates, setBlockedDates] = useState<{ id: string; start_date: string; end_date: string; note: string | null }[]>([])
   const [newBlock, setNewBlock] = useState({ start_date: '', end_date: '', note: '' })
   const [editBlock, setEditBlock] = useState<{ id: string; start_date: string; end_date: string; note: string } | null>(null)
@@ -114,11 +117,43 @@ export default function AdminDashboard() {
     setOrders(ordersData)
     setProfiles(Array.isArray(profilesData) ? profilesData : [])
     setAccepting(settingsData.is_accepting_orders ?? true)
+    applyShop(settingsData)
     const pm: Record<string, CustomerPricing> = {}
     if (Array.isArray(pricingData)) pricingData.forEach((p: CustomerPricing) => { pm[p.user_id] = p })
     setPricingMap(pm)
     setBlockedDates(Array.isArray(blockedData) ? blockedData : [])
     setLoading(false)
+  }
+
+  function applyShop(d: { price_per_piece?: number; signup_code?: string | null; signup_code_price?: number }) {
+    const next = {
+      price_per_piece: d.price_per_piece ?? PRICE_PER_PIECE,
+      signup_code: d.signup_code ?? '',
+      signup_code_price: d.signup_code_price ?? SIGNUP_CODE_PRICE,
+    }
+    setShop(next)
+    setShopForm({ price_per_piece: String(next.price_per_piece), signup_code: next.signup_code, signup_code_price: String(next.signup_code_price) })
+  }
+
+  async function saveShop() {
+    const price = parseInt(shopForm.price_per_piece)
+    const codePrice = parseInt(shopForm.signup_code_price)
+    if (!(price > 0)) return toast.error('กรุณากรอกราคาปกติ')
+    if (!(codePrice > 0)) return toast.error('กรุณากรอกราคาโค้ด')
+    setShopLoading(true)
+    const res = await fetch('/api/admin/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ price_per_piece: price, signup_code: shopForm.signup_code, signup_code_price: codePrice }),
+    })
+    const d = await res.json()
+    if (res.ok) {
+      applyShop(d)
+      toast.success('บันทึกราคาและโค้ดแล้ว')
+    } else {
+      toast.error(d.error || 'บันทึกไม่สำเร็จ')
+    }
+    setShopLoading(false)
   }
 
   async function savePricing() {
@@ -651,6 +686,50 @@ export default function AdminDashboard() {
         {/* CUSTOMERS TAB */}
         {tab === 'customers' && (
           <div className="space-y-3">
+            {/* Shop price + signup code */}
+            <div className="rounded-2xl p-4 border-2 space-y-3" style={{ background: 'white', borderColor: '#e8c4c4' }}>
+              <div>
+                <p className="font-bold" style={{ color: '#4a2728' }}>ราคาขาย & โค้ดสมัคร</p>
+                <p className="text-xs" style={{ color: '#7a4a4b' }}>
+                  ลูกค้าที่สมัครพร้อมใส่โค้ด จะได้ราคาโค้ดถาวรทันที · ลูกค้าที่ตั้งราคาพิเศษไว้แล้วจะไม่ถูกเปลี่ยน
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <p className="text-xs mb-1" style={{ color: '#7a4a4b' }}>ราคาปกติ (บาท/ชิ้น)</p>
+                  <input type="number" inputMode="numeric" value={shopForm.price_per_piece}
+                    onChange={e => setShopForm(f => ({ ...f, price_per_piece: e.target.value }))}
+                    className="w-full rounded-lg px-3 py-2 border-2 text-sm font-bold"
+                    style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
+                </div>
+                <div>
+                  <p className="text-xs mb-1" style={{ color: '#7a4a4b' }}>ราคาเมื่อใช้โค้ด (บาท/ชิ้น)</p>
+                  <input type="number" inputMode="numeric" value={shopForm.signup_code_price}
+                    onChange={e => setShopForm(f => ({ ...f, signup_code_price: e.target.value }))}
+                    className="w-full rounded-lg px-3 py-2 border-2 text-sm font-bold"
+                    style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
+                </div>
+              </div>
+              <div>
+                <p className="text-xs mb-1" style={{ color: '#7a4a4b' }}>โค้ดสมัคร (ว่าง = ปิดใช้โค้ด)</p>
+                <input type="text" value={shopForm.signup_code}
+                  onChange={e => setShopForm(f => ({ ...f, signup_code: e.target.value.toUpperCase() }))}
+                  placeholder="เช่น GAISEED60" autoCapitalize="characters"
+                  className="w-full rounded-lg px-3 py-2 border-2 text-sm font-bold tracking-wide"
+                  style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
+              </div>
+              <button onClick={saveShop}
+                disabled={shopLoading || (
+                  shopForm.price_per_piece === String(shop.price_per_piece)
+                  && shopForm.signup_code === shop.signup_code
+                  && shopForm.signup_code_price === String(shop.signup_code_price)
+                )}
+                className="w-full rounded-lg py-2 text-xs font-bold disabled:opacity-50"
+                style={{ background: '#4a2728', color: '#f2dada' }}>
+                {shopLoading ? 'กำลังบันทึก...' : 'บันทึก'}
+              </button>
+            </div>
+
             {customers.length === 0 && (
               <div className="text-center py-10 text-sm" style={{ color: '#7a4a4b' }}>ยังไม่มีลูกค้า</div>
             )}
@@ -733,7 +812,7 @@ export default function AdminDashboard() {
                           {pricingActive && !isShowingForm && (
                             <div className="text-xs space-y-0.5" style={{ color: '#7a4a4b' }}>
                               <p>ราคา <b style={{ color: '#4a2728' }}>{pricing!.price_per_piece} บาท/ชิ้น</b>
-                                {' '}(ปกติ {PRICE_PER_PIECE} บาท)</p>
+                                {' '}(ปกติ {shop.price_per_piece} บาท)</p>
                               {pricing!.expires_at && (
                                 <p>หมดอายุ {new Date(pricing!.expires_at).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
                               )}
@@ -749,7 +828,7 @@ export default function AdminDashboard() {
                                   <p className="text-xs mb-1" style={{ color: '#7a4a4b' }}>ราคา (บาท/ชิ้น)</p>
                                   <input type="number" value={pricingForm!.price}
                                     onChange={e => setPricingForm(p => p ? { ...p, price: e.target.value } : null)}
-                                    placeholder={String(PRICE_PER_PIECE)}
+                                    placeholder={String(shop.price_per_piece)}
                                     className="w-full rounded-lg px-3 py-2 border-2 text-sm font-bold"
                                     style={{ borderColor: '#e8c4c4', color: '#4a2728' }} />
                                 </div>
