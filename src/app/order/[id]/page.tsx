@@ -8,6 +8,7 @@ import { CheckCircle, Upload, Clock, MapPin, Truck } from 'lucide-react'
 import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, getOrderItems, itemLabel, type Order } from '@/lib/types'
 import BottomNav from '@/components/BottomNav'
 import ChickenLoader from '@/components/ChickenLoader'
+import { compressImage } from '@/lib/compressImage'
 
 const PROMPTPAY_ID = process.env.NEXT_PUBLIC_PROMPTPAY_ID ?? ''
 
@@ -84,7 +85,8 @@ export default function OrderConfirmPage() {
     setUploading(true)
     try {
       const fd = new FormData()
-      fd.append('slip', slipFile)
+      // phone screenshots can be several MB; 1600px JPEG keeps amount + QR readable
+      fd.append('slip', await compressImage(slipFile, { maxWidthPx: 1600, qualityJpeg: 0.85, maxSizeKB: 800 }))
       const res = await fetch(`/api/orders/${id}/slip`, { method: 'POST', body: fd })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
