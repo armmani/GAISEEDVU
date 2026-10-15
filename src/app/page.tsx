@@ -78,8 +78,8 @@ function ItemCard({ item, idx, total, pricePerPiece, onChange, onRemove }: {
       {/* Salt level */}
       <div>
         <span className="text-xs font-semibold block mb-1.5" style={{ color: '#7a4a4b' }}>เกลือ</span>
-        <div className="grid grid-cols-3 gap-1.5">
-          {(['normal', 'less', 'none'] as ItemSaltLevel[]).map(level => (
+        <div className="grid grid-cols-2 gap-1.5">
+          {(['normal', 'none'] as ItemSaltLevel[]).map(level => (
             <button key={level} type="button" onClick={() => onChange({ salt_level: level })}
               className="rounded-lg px-2 py-1.5 border-2 text-xs font-semibold transition-all"
               style={{
