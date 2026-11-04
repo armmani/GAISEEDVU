@@ -27,7 +27,18 @@ export async function middleware(request: NextRequest) {
   const isLoginPage = pathname.startsWith('/login') || pathname.startsWith('/reset-password') || pathname.startsWith('/auth/callback')
   const isAdminPage = pathname.startsWith('/admin')
   const isApiRoute = pathname.startsWith('/api')
-  const isStaticAsset = pathname.startsWith('/_next') || pathname === '/favicon.ico' || pathname === '/logo.png'
+  // PWA assets are fetched by the browser without cookies (the manifest and its
+  // icons especially), so they must never be redirected to the login page.
+  const isStaticAsset =
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/icon') ||
+    pathname === '/favicon.ico' ||
+    pathname === '/logo.png' ||
+    pathname === '/manifest.webmanifest' ||
+    pathname === '/sw.js' ||
+    pathname === '/offline.html' ||
+    pathname === '/apple-icon.png' ||
+    pathname === '/badge-96.png'
 
   if (isApiRoute || isStaticAsset) return supabaseResponse
 

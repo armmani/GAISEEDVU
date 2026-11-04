@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { sendTelegram } from '@/lib/telegram'
+import { sendPushToAdmin } from '@/lib/push'
 import { redeemSignupCode, type RedeemResult } from '@/lib/pricing'
 
 const supabaseAdmin = createClient(
@@ -45,10 +46,18 @@ export async function POST(req: NextRequest) {
     code_result = await redeemSignupCode(supabaseAdmin, user.id, signup_code)
   }
 
-  const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID
-  if (adminChatId && !existing) {
+  if (!existing) {
     const codeLine = code_result === 'applied' ? '\n🎟️ สมัครด้วยโค้ด — ได้ราคาพิเศษ' : ''
-    await sendTelegram(adminChatId, `🆕 <b>สมาชิกใหม่!</b>\n👤 ${display_name || '—'}\n📞 ${phone || '—'}${codeLine}`)
+    const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID
+    if (adminChatId) {
+      await sendTelegram(adminChatId, `🆕 <b>สมาชิกใหม่!</b>\n👤 ${display_name || '—'}\n📞 ${phone || '—'}${codeLine}`)
+    }
+    await sendPushToAdmin(supabaseAdmin, {
+      title: '🆕 สมาชิกใหม่!',
+      body: `${display_name || '—'} · ${phone || '—'}${code_result === 'applied' ? ' · ใช้โค้ดราคาพิเศษ' : ''}`,
+      url: '/admin/dashboard',
+      tag: `member-${user.id}`,
+    })
   }
 
   return NextResponse.json({ ok: true, code_result })

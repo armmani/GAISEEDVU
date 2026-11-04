@@ -6,6 +6,8 @@ import toast from 'react-hot-toast'
 import { MapPin, Truck, ExternalLink, RefreshCw, ToggleLeft, ToggleRight, LogOut, Users, ClipboardList, Tag, X, ChefHat, CalendarOff, Trash2, AlertTriangle } from 'lucide-react'
 import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, PRICE_PER_PIECE, SIGNUP_CODE_PRICE, getOrderItems, itemLabel, formatOrderedAt, findDuplicates, type Order, type OrderStatus } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
+import InstallPrompt from '@/components/InstallPrompt'
+import PushToggle from '@/components/PushToggle'
 
 const STATUS_COLORS: Record<OrderStatus, { bg: string; text: string }> = {
   pending:   { bg: '#ffd6d6', text: '#c0392b' },
@@ -320,6 +322,9 @@ export default function AdminDashboard() {
               : <ToggleLeft size={40} style={{ color: '#e8c4c4' }} />}
           </button>
         </div>
+
+        <InstallPrompt variant="banner" />
+        <PushToggle description="รับแจ้งเตือนเด้งขึ้นมือถือทันทีที่มีออเดอร์ใหม่หรือสมาชิกใหม่" />
 
         {/* Tab switcher */}
         <div className="grid grid-cols-4 gap-1 rounded-2xl p-1 border-2" style={{ background: 'white', borderColor: '#e8c4c4' }}>

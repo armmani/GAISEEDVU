@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { sendTelegram } from '@/lib/telegram'
+import { sendPushToAdmin } from '@/lib/push'
 import { itemLabel, itemsTotal, type OrderItem } from '@/lib/types'
 import { getPriceForUser } from '@/lib/pricing'
 
@@ -132,6 +133,13 @@ export async function POST(req: NextRequest) {
       ].filter(Boolean).join('\n')
       await sendTelegram(adminChatId, msg)
     }
+
+    await sendPushToAdmin(supabaseAdmin, {
+      title: '🐔 ออเดอร์ใหม่!',
+      body: `${customer_name.trim()} · ${totalQty} ชิ้น · ${calculatedTotal.toLocaleString()} บาท · รับ ${new Date(pickup_date).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' })}`,
+      url: '/admin/dashboard',
+      tag: `order-${data.id}`,
+    })
 
     return NextResponse.json({ id: data.id })
   } catch (err) {

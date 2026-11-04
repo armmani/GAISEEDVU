@@ -6,6 +6,7 @@ import toast from 'react-hot-toast'
 import { ShoppingBag, MapPin, Truck, Minus, Plus, X } from 'lucide-react'
 import { PICKUP_LOCATIONS, PRICE_PER_PIECE, TIME_SLOTS, PEPPER_LEVEL_LABEL, ITEM_SALT_LEVEL_LABEL, getOrderItems, halfPricePerPiece, itemsTotal, type DeliveryType, type PickupLocation, type OrderItem, type PepperLevel, type ItemSaltLevel } from '@/lib/types'
 import BottomNav from '@/components/BottomNav'
+import InstallPrompt from '@/components/InstallPrompt'
 import dynamic from 'next/dynamic'
 
 const MapPicker = dynamic(() => import('@/components/MapPicker'), { ssr: false })
@@ -230,6 +231,8 @@ export default function OrderPage() {
             </a>
           </div>
         </div>
+
+        <InstallPrompt variant="banner" />
 
         {/* Product info */}
         <div className="rounded-2xl p-5 mb-4 border-2" style={{ background: 'white', borderColor: '#e8c4c4' }}>

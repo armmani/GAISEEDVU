@@ -6,6 +6,8 @@ import toast from 'react-hot-toast'
 import { LogOut } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import BottomNav from '@/components/BottomNav'
+import InstallPrompt from '@/components/InstallPrompt'
+import PushToggle from '@/components/PushToggle'
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -167,6 +169,12 @@ export default function ProfilePage() {
               </button>
             )}
           </div>
+        </div>
+
+        {/* App & notifications */}
+        <div className="space-y-4 mb-4">
+          <InstallPrompt />
+          <PushToggle description="รับแจ้งเตือนเด้งขึ้นมือถือทุกครั้งที่สถานะออเดอร์เปลี่ยน ไม่ต้องเปิดแอพรอ" />
         </div>
 
         <form onSubmit={handleSave} className="rounded-2xl p-5 border-2 space-y-4" style={{ background: 'white', borderColor: '#e8c4c4' }}>
