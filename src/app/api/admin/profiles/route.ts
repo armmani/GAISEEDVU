@@ -20,12 +20,14 @@ export async function GET() {
   const { data: authData } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 })
   const authUsers = authData?.users ?? []
 
-  // Get all profiles
-  const { data: profiles } = await supabaseAdmin
-    .from('profiles')
-    .select('id, display_name, phone, created_at')
+  // Get all profiles, plus who can actually be reached by a chat notification
+  const [{ data: profiles }, { data: pushRows }] = await Promise.all([
+    supabaseAdmin.from('profiles').select('id, display_name, phone, created_at, telegram_chat_id'),
+    supabaseAdmin.from('push_subscriptions').select('user_id'),
+  ])
 
   const profileMap = new Map((profiles ?? []).map(p => [p.id, p]))
+  const pushUsers = new Set((pushRows ?? []).map(r => r.user_id))
   const adminEmail = process.env.ADMIN_EMAIL
 
   const result = authUsers
@@ -38,6 +40,8 @@ export async function GET() {
         display_name: profile?.display_name || u.user_metadata?.full_name || u.user_metadata?.name || '',
         phone: profile?.phone || '',
         created_at: u.created_at,
+        has_push: pushUsers.has(u.id),
+        has_telegram: Boolean(profile?.telegram_chat_id),
       }
     })
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())

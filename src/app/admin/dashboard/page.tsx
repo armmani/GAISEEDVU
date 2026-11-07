@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { MapPin, Truck, ExternalLink, RefreshCw, ToggleLeft, ToggleRight, LogOut, Users, ClipboardList, Tag, X, ChefHat, CalendarOff, Trash2, AlertTriangle, MessageCircle } from 'lucide-react'
@@ -8,7 +8,7 @@ import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, PRICE_PER_PIECE, SIGNUP_CODE_PRIC
 import { createClient } from '@/lib/supabase/client'
 import InstallPrompt from '@/components/InstallPrompt'
 import PushToggle from '@/components/PushToggle'
-import AdminChat, { type ChatThread } from '@/components/AdminChat'
+import AdminChat, { type ChatThread, type ChatCustomer, type ChatTarget } from '@/components/AdminChat'
 
 const STATUS_COLORS: Record<OrderStatus, { bg: string; text: string }> = {
   pending:   { bg: '#ffd6d6', text: '#c0392b' },
@@ -26,6 +26,8 @@ interface Profile {
   display_name: string
   phone: string
   created_at: string
+  has_push?: boolean
+  has_telegram?: boolean
 }
 
 interface CustomerSummary {
@@ -91,6 +93,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'orders' | 'summary' | 'customers' | 'calendar' | 'chat'>('orders')
   const [chatUnread, setChatUnread] = useState(0)
+  const [chatTarget, setChatTarget] = useState<ChatTarget | null>(null)
   const [filter, setFilter] = useState<OrderStatus | 'all'>('all')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [expandedCustomer, setExpandedCustomer] = useState<string | null>(null)
@@ -106,6 +109,24 @@ export default function AdminDashboard() {
   const [newBlock, setNewBlock] = useState({ start_date: '', end_date: '', note: '' })
   const [editBlock, setEditBlock] = useState<{ id: string; start_date: string; end_date: string; note: string } | null>(null)
   const [blockLoading, setBlockLoading] = useState(false)
+
+  // Everyone the shop can write to first, for the chat tab's customer picker.
+  const chatCustomers = useMemo<ChatCustomer[]>(() => profiles.map(p => ({
+    id: p.id,
+    name: p.display_name || '(ยังไม่ได้ตั้งชื่อ)',
+    phone: p.phone || '',
+    email: p.email || '',
+    has_push: p.has_push ?? false,
+    has_telegram: p.has_telegram ?? false,
+  })), [profiles])
+
+  /** Opens the chat tab on one customer, optionally with the message started. */
+  function chatWith(userId: string, prefill?: string) {
+    setChatTarget({ userId, prefill })
+    setTab('chat')
+  }
+
+  const clearChatTarget = useCallback(() => setChatTarget(null), [])
 
   async function fetchData() {
     setLoading(true)
@@ -477,7 +498,14 @@ export default function AdminDashboard() {
                       ))}
                     </div>
                     <div className="flex items-center justify-between">
-                      <span />
+                      {order.user_id ? (
+                        <button
+                          onClick={() => chatWith(order.user_id!, `เรื่องออเดอร์ #${order.id.slice(0, 6).toUpperCase()} ค่ะ `)}
+                          className="flex items-center gap-1 font-bold"
+                          style={{ color: '#1a5eb8' }}>
+                          <MessageCircle size={12} /> ทักลูกค้า
+                        </button>
+                      ) : <span />}
                       <a href={`tel:${order.phone}`} className="font-bold underline" style={{ color: '#4a2728' }}>
                         {order.phone}
                       </a>
@@ -937,7 +965,12 @@ export default function AdminDashboard() {
                       })}
 
                       {c.userId && (
-                        <div className="px-4 py-3 border-t" style={{ borderColor: '#e8c4c4' }}>
+                        <div className="px-4 py-3 border-t space-y-2" style={{ borderColor: '#e8c4c4' }}>
+                          <button onClick={() => chatWith(c.userId!)}
+                            className="w-full flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold"
+                            style={{ background: '#4a2728', color: '#f2dada' }}>
+                            <MessageCircle size={14} /> ทักแชทลูกค้า
+                          </button>
                           <button onClick={() => setDeleteTarget(c)}
                             className="w-full flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold border-2"
                             style={{ borderColor: '#f0b4b4', color: '#c0392b', background: 'white' }}>
@@ -1067,7 +1100,14 @@ export default function AdminDashboard() {
         )}
 
         {/* CHAT TAB */}
-        {tab === 'chat' && <AdminChat onUnreadChange={setChatUnread} />}
+        {tab === 'chat' && (
+          <AdminChat
+            customers={chatCustomers}
+            target={chatTarget}
+            onTargetHandled={clearChatTarget}
+            onUnreadChange={setChatUnread}
+          />
+        )}
 
       </div>
 
