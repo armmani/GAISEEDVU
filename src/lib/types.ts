@@ -158,3 +158,49 @@ export function itemLabel(item: OrderItem): string {
   ].filter(Boolean)
   return parts.length > 0 ? parts.join(' · ') : 'สูตรปกติ'
 }
+
+// ——— Chat (ลูกค้าคุยกับร้าน) ———
+
+export type ChatSender = 'customer' | 'admin'
+
+export interface ChatMessage {
+  id: string
+  sender: ChatSender
+  body: string
+  read_at: string | null
+  created_at: string
+}
+
+export const CHAT_MAX_LENGTH = 1500
+
+/** Clock time of a message, as the shop and customer read it (Thailand). */
+export function formatChatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString('th-TH', {
+    timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit',
+  })
+}
+
+/** Day label for the separator between days of chat. */
+export function formatChatDay(iso: string): string {
+  const d = new Date(iso)
+  const dayKey = (x: Date) => x.toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' })
+  const now = new Date()
+  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+  if (dayKey(d) === dayKey(now)) return 'วันนี้'
+  if (dayKey(d) === dayKey(yesterday)) return 'เมื่อวาน'
+  return d.toLocaleDateString('th-TH', {
+    timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', year: '2-digit',
+  })
+}
+
+/** Groups a thread into day buckets, oldest first. */
+export function groupChatByDay(messages: ChatMessage[]): { day: string; messages: ChatMessage[] }[] {
+  const out: { day: string; messages: ChatMessage[] }[] = []
+  for (const m of messages) {
+    const day = formatChatDay(m.created_at)
+    const last = out[out.length - 1]
+    if (last && last.day === day) last.messages.push(m)
+    else out.push({ day, messages: [m] })
+  }
+  return out
+}

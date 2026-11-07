@@ -3,11 +3,12 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { MapPin, Truck, ExternalLink, RefreshCw, ToggleLeft, ToggleRight, LogOut, Users, ClipboardList, Tag, X, ChefHat, CalendarOff, Trash2, AlertTriangle } from 'lucide-react'
+import { MapPin, Truck, ExternalLink, RefreshCw, ToggleLeft, ToggleRight, LogOut, Users, ClipboardList, Tag, X, ChefHat, CalendarOff, Trash2, AlertTriangle, MessageCircle } from 'lucide-react'
 import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, PRICE_PER_PIECE, SIGNUP_CODE_PRICE, getOrderItems, itemLabel, formatOrderedAt, findDuplicates, type Order, type OrderStatus } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import InstallPrompt from '@/components/InstallPrompt'
 import PushToggle from '@/components/PushToggle'
+import AdminChat, { type ChatThread } from '@/components/AdminChat'
 
 const STATUS_COLORS: Record<OrderStatus, { bg: string; text: string }> = {
   pending:   { bg: '#ffd6d6', text: '#c0392b' },
@@ -88,7 +89,8 @@ export default function AdminDashboard() {
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [accepting, setAccepting] = useState(true)
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<'orders' | 'summary' | 'customers' | 'calendar'>('orders')
+  const [tab, setTab] = useState<'orders' | 'summary' | 'customers' | 'calendar' | 'chat'>('orders')
+  const [chatUnread, setChatUnread] = useState(0)
   const [filter, setFilter] = useState<OrderStatus | 'all'>('all')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [expandedCustomer, setExpandedCustomer] = useState<string | null>(null)
@@ -107,17 +109,21 @@ export default function AdminDashboard() {
 
   async function fetchData() {
     setLoading(true)
-    const [ordersRes, settingsRes, pricingRes, profilesRes, blockedRes] = await Promise.all([
+    const [ordersRes, settingsRes, pricingRes, profilesRes, blockedRes, chatRes] = await Promise.all([
       fetch('/api/admin/orders'),
       fetch('/api/admin/settings'),
       fetch('/api/admin/customer-pricing'),
       fetch('/api/admin/profiles'),
       fetch('/api/admin/blocked-dates'),
+      fetch('/api/admin/chat'),
     ])
     if (ordersRes.status === 401) { router.push('/admin/login'); return }
-    const [ordersData, settingsData, pricingData, profilesData, blockedData] = await Promise.all([
-      ordersRes.json(), settingsRes.json(), pricingRes.json(), profilesRes.json(), blockedRes.json(),
+    const [ordersData, settingsData, pricingData, profilesData, blockedData, chatData] = await Promise.all([
+      ordersRes.json(), settingsRes.json(), pricingRes.json(), profilesRes.json(), blockedRes.json(), chatRes.json(),
     ])
+    setChatUnread(Array.isArray(chatData)
+      ? (chatData as ChatThread[]).reduce((s, t) => s + t.unread, 0)
+      : 0)
     setOrders(ordersData)
     setProfiles(Array.isArray(profilesData) ? profilesData : [])
     setAccepting(settingsData.is_accepting_orders ?? true)
@@ -253,6 +259,11 @@ export default function AdminDashboard() {
 
   useEffect(() => { fetchData() }, [])
 
+  // Tapping a chat notification lands on /admin/dashboard?tab=chat
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('tab') === 'chat') setTab('chat')
+  }, [])
+
   async function updateStatus(id: string, status: OrderStatus) {
     const res = await fetch('/api/admin/orders', {
       method: 'PATCH',
@@ -327,20 +338,30 @@ export default function AdminDashboard() {
         <PushToggle description="รับแจ้งเตือนเด้งขึ้นมือถือทันทีที่มีออเดอร์ใหม่หรือสมาชิกใหม่" />
 
         {/* Tab switcher */}
-        <div className="grid grid-cols-4 gap-1 rounded-2xl p-1 border-2" style={{ background: 'white', borderColor: '#e8c4c4' }}>
+        <div className="grid grid-cols-5 gap-0.5 rounded-2xl p-1 border-2" style={{ background: 'white', borderColor: '#e8c4c4' }}>
           {([
             { key: 'orders', label: 'ออเดอร์', icon: <ClipboardList size={15} /> },
             { key: 'summary', label: 'สรุป', icon: <ChefHat size={15} /> },
             { key: 'customers', label: 'ลูกค้า', icon: <Users size={15} /> },
             { key: 'calendar', label: 'วันหยุด', icon: <CalendarOff size={15} /> },
+            { key: 'chat', label: 'แชท', icon: <MessageCircle size={15} /> },
           ] as const).map(({ key, label, icon }) => (
             <button key={key} onClick={() => setTab(key)}
-              className="flex items-center justify-center gap-1.5 rounded-xl py-2 font-bold text-xs transition-all"
+              className="flex items-center justify-center gap-1 rounded-xl py-2 font-bold text-[11px] transition-all"
               style={{
                 background: tab === key ? '#4a2728' : 'transparent',
                 color: tab === key ? '#f2dada' : '#4a2728',
               }}>
-              {icon}{label}
+              <span className="relative shrink-0">
+                {icon}
+                {key === 'chat' && chatUnread > 0 && (
+                  <span className="absolute -top-1.5 -right-2 min-w-[15px] h-[15px] px-1 rounded-full text-[9px] font-bold flex items-center justify-center"
+                    style={{ background: '#c0392b', color: 'white' }}>
+                    {chatUnread > 9 ? '9+' : chatUnread}
+                  </span>
+                )}
+              </span>
+              {label}
             </button>
           ))}
         </div>
@@ -1044,6 +1065,9 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
+
+        {/* CHAT TAB */}
+        {tab === 'chat' && <AdminChat onUnreadChange={setChatUnread} />}
 
       </div>
 

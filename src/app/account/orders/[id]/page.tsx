@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, MapPin, Truck, ExternalLink, Pencil, X, Minus, Plus } from 'lucide-react'
+import { ArrowLeft, MapPin, Truck, ExternalLink, Pencil, X, Minus, Plus, MessageCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { PICKUP_LOCATIONS, ORDER_STATUS_LABEL, TIME_SLOTS, PEPPER_LEVEL_LABEL, ITEM_SALT_LEVEL_LABEL, getOrderItems, itemLabel, formatOrderedAt, type Order, type OrderStatus, type OrderItem, type DeliveryType, type PickupLocation, type PepperLevel, type ItemSaltLevel } from '@/lib/types'
 import ChickenLoader from '@/components/ChickenLoader'
@@ -470,6 +470,13 @@ export default function OrderDetailPage() {
             ไปชำระเงิน →
           </Link>
         )}
+
+        {/* Ask the shop about this order */}
+        <Link href={`/account/chat?order=${order.id}`}
+          className="flex items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold border-2"
+          style={{ borderColor: '#e8c4c4', color: '#4a2728', background: 'white' }}>
+          <MessageCircle size={16} /> สอบถามเรื่องออเดอร์นี้
+        </Link>
 
         {/* Cancel */}
         {canEdit && (
